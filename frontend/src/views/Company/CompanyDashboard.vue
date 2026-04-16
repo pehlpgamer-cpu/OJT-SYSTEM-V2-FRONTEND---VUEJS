@@ -10,7 +10,53 @@ const companyStore = useCompanyStore()
 const errorStore = useErrorStore()
 const { profile, postings } = storeToRefs(companyStore)
 
-/**\n * FIX: HIGH SEVERITY - Sequential API calls now use Promise.all\n * \n * BEFORE (BAD):\n * await fetchProfile()    // Wait for this\n * await fetchPostings()   // Then wait for this\n * Total time: ~2-4 seconds\n * \n * AFTER (GOOD):\n * Promise.all([fetchProfile(), fetchPostings()])\n * Total time: ~2 seconds (parallel)\n * \n * ERROR HANDLING:\n * - If either call fails, Promise.all rejects\n * - error is caught and stored in errorStore\n * - Component shows error via global error display\n * - Partial data might still be available\n * \n * WHY: These two requests are independent\n * No data dependency between them\n * Browser can make both requests simultaneously\n */\nonMounted(async () => {\n  console.debug('[CompanyDashboard] Component mounted, loading data')\n  errorStore.clearError()\n  \n  try {\n    console.debug('[CompanyDashboard] Starting parallel data loads')\n    \n    // OPTIMIZATION: Load both profile and postings in parallel\n    // Promise.all waits for BOTH to complete\n    // If either fails, error is thrown\n    await Promise.all([\n      fetchProfile(),\n      fetchPostings()\n    ])\n    \n    console.log('[CompanyDashboard] Data loaded successfully')\n  } catch (error) {\n    console.error('[CompanyDashboard] Failed to load data', { \n      error: error.message,\n      statusCode: error.statusCode \n    })\n    // Error already set in errorStore by apiClient/composable\n    // UI will display error bar\n  }\n})
+/**
+ * FIX: HIGH SEVERITY - Sequential API calls now use Promise.all
+ * 
+ * BEFORE (BAD):
+ * await fetchProfile()    // Wait for this
+ * await fetchPostings()   // Then wait for this
+ * Total time: ~2-4 seconds
+ * 
+ * AFTER (GOOD):
+ * Promise.all([fetchProfile(), fetchPostings()])
+ * Total time: ~2 seconds (parallel)
+ * 
+ * ERROR HANDLING:
+ * - If either call fails, Promise.all rejects
+ * - error is caught and stored in errorStore
+ * - Component shows error via global error display
+ * - Partial data might still be available
+ * 
+ * WHY: These two requests are independent
+ * No data dependency between them
+ * Browser can make both requests simultaneously
+ */
+onMounted(async () => {
+  console.debug('[CompanyDashboard] Component mounted, loading data')
+  errorStore.clearError()
+  
+  try {
+    console.debug('[CompanyDashboard] Starting parallel data loads')
+    
+    // OPTIMIZATION: Load both profile and postings in parallel
+    // Promise.all waits for BOTH to complete
+    // If either fails, error is thrown
+    await Promise.all([
+      fetchProfile(),
+      fetchPostings()
+    ])
+    
+    console.log('[CompanyDashboard] Data loaded successfully')
+  } catch (error) {
+    console.error('[CompanyDashboard] Failed to load data', { 
+      error: error.message,
+      statusCode: error.statusCode 
+    })
+    // Error already set in errorStore by apiClient/composable
+    // UI will display error bar
+  }
+})
 
 </script>
 

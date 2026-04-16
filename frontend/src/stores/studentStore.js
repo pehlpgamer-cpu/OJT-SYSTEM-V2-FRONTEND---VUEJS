@@ -1,4 +1,194 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 
-/**\n * Student Store (Pinia)\n * \n * Manages student profile and skills state:\n * - Student profile (name, bio, location, availability, GPA, academic program)\n * - Skills list with proficiency levels\n * - Job applications submitted\n * - Profile completeness calculation\n * \n * ARCHITECTURE:\n * - profile: Single profile object\n * - skills: Array of student skills\n * - applications: Array of submitted applications\n * - Computed properties for UI derivations\n * \n * PROFILE COMPLETENESS:\n * Calculates what % of profile is filled out\n * Score breakdown:\n * - Basic info: 20 points (name)\n * - Bio/description: 20 points\n * - Location/availability: 25 points\n * - Education: 20 points  \n * - Skills: 15 points\n * \n * Total: 100 points = complete profile\n * Used for UX hints: low score suggests profile updates\n */\nexport const useStudentStore = defineStore('student', () => {\n  /**\n   * @type {Ref<Object|null>}\n   * Student profile with id, name, bio, GPA, school, etc.\n   * Populated from /student/profile API\n   */\n  const profile = ref(null)\n  \n  /**\n   * @type {Ref<Array>}\n   * Array of student skills with proficiency levels\n   * Example: [{ id: 1, name: \"JavaScript\", proficiency: \"expert\" }]\n   */\n  const skills = ref([])\n  \n  /**\n   * @type {Ref<Array>}\n   * Applications student has submitted to postings\n   * Example: [{ id: 1, posting_id: 5, status: \"pending\" }]\n   */\n  const applications = ref([])\n\n  /**\n   * Calculate profile completeness percentage (0-100)\n   * \n   * WHAT: Determines how complete/filled out profile is\n   * HOW: Checks which fields are populated and adds points\n   * WHY: Prompts user to complete profile for better matches\n   * \n   * ERROR HANDLING:\n   * - Returns 0 if profile not loaded\n   * - Caps at 100 max\n   * - Continues even if some fields missing\n   * \n   * @type {ComputedRef<number>}\n   * @returns {number} 0-100 score\n   */\n  const profileCompleteness = computed(() => {\n    if (!profile.value) {\n      console.debug('[StudentStore] Profile not loaded, completeness = 0')\n      return 0\n    }\n    \n    let score = 0\n    \n    // BASIC INFO (20 points)\n    if (profile.value.first_name) score += 10\n    if (profile.value.last_name) score += 10\n    \n    // BIO/DESCRIPTION (20 points)\n    if (profile.value.bio) score += 20\n    \n    // LOCATION & AVAILABILITY (25 points)\n    if (profile.value.preferred_location) score += 10\n    if (profile.value.availability_start && profile.value.availability_end) score += 15\n    \n    // EDUCATION (20 points)\n    if (profile.value.gpa) score += 10\n    if (profile.value.academic_program) score += 10\n    \n    // SKILLS (15 points)\n    if (skills.value.length > 0) score += 15\n\n    const capped = Math.min(score, 100)\n    console.debug('[StudentStore] Profile completeness calculated', { score, capped })\n    return capped\n  })\n\n  /**\n   * Is profile fully complete? (100%)\n   * \n   * @type {ComputedRef<boolean>}\n   * @returns {boolean} true if completeness >= 100\n   */\n  const isProfileComplete = computed(() => {\n    const complete = profileCompleteness.value >= 100\n    console.debug('[StudentStore] Profile completeness check', { isComplete: complete })\n    return complete\n  })\n\n  /**\n   * Update entire profile\n   * @param {Object} newProfile - Profile object from API\n   */\n  const setProfile = (newProfile) => { \n    console.debug('[StudentStore] setProfile called', { hasProfile: !!newProfile })\n    profile.value = newProfile \n  }\n  \n  /**\n   * Replace entire skills array\n   * @param {Array} newSkills - Array of skill objects\n   */\n  const setSkills = (newSkills) => { \n    console.debug('[StudentStore] setSkills called', { count: newSkills?.length })\n    skills.value = newSkills \n  }\n  \n  /**\n   * Add single skill to array\n   * @param {Object} skill - Skill object to add\n   */\n  const addSkill = (skill) => { \n    console.debug('[StudentStore] addSkill called', { skillName: skill?.name })\n    skills.value.push(skill) \n  }\n  \n  /**\n   * Update existing skill (finds by ID and replaces)\n   * FIX: Should validate ID exists before updating\n   * @param {Object} updatedSkill - Skill with updated values\n   */\n  const updateSkill = (updatedSkill) => {\n    console.debug('[StudentStore] updateSkill called', { skillId: updatedSkill?.id })\n    const index = skills.value.findIndex(s => s.id === updatedSkill.id)\n    if (index !== -1) {\n      skills.value[index] = updatedSkill\n      console.debug('[StudentStore] Skill updated successfully', { skillId: updatedSkill.id })\n    } else {\n      console.warn('[StudentStore] Skill not found in array', { skillId: updatedSkill.id })\n    }\n  }\n  \n  /**\n   * Remove skill from array\n   * @param {string|number} skillId - ID of skill to remove\n   */\n  const removeSkill = (skillId) => {\n    console.debug('[StudentStore] removeSkill called', { skillId })\n    const before = skills.value.length\n    skills.value = skills.value.filter(s => s.id !== skillId)\n    const after = skills.value.length\n    console.debug('[StudentStore] Skill removed', { skillId, removed: before > after })\n  }\n\n  /**\n   * Set applications array\n   * @param {Array} apps - Applications array from API\n   */\n  const setApplications = (apps) => { \n    console.debug('[StudentStore] setApplications called', { count: apps?.length })\n    applications.value = apps \n  }\n\n  // Store exports\n  return {\n    // Reactive state\n    profile,\n    skills,\n    applications,\n    \n    // Computed\n    profileCompleteness,\n    isProfileComplete,\n    \n    // Mutations\n    setProfile,\n    setSkills,\n    addSkill,\n    updateSkill,\n    removeSkill,\n    setApplications\n  }\n})
+/**
+ * Student Store (Pinia)
+ * 
+ * Manages student profile and skills state:
+ * - Student profile (name, bio, location, availability, GPA, academic program)
+ * - Skills list with proficiency levels
+ * - Job applications submitted
+ * - Profile completeness calculation
+ * 
+ * ARCHITECTURE:
+ * - profile: Single profile object
+ * - skills: Array of student skills
+ * - applications: Array of submitted applications
+ * - Computed properties for UI derivations
+ * 
+ * PROFILE COMPLETENESS:
+ * Calculates what % of profile is filled out
+ * Score breakdown:
+ * - Basic info: 20 points (name)
+ * - Bio/description: 20 points
+ * - Location/availability: 25 points
+ * - Education: 20 points  
+ * - Skills: 15 points
+ * 
+ * Total: 100 points = complete profile
+ * Used for UX hints: low score suggests profile updates
+ */
+export const useStudentStore = defineStore('student', () => {
+  /**
+   * @type {Ref<Object|null>}
+   * Student profile with id, name, bio, GPA, school, etc.
+   * Populated from /student/profile API
+   */
+  const profile = ref(null)
+  
+  /**
+   * @type {Ref<Array>}
+   * Array of student skills with proficiency levels
+   * Example: [{ id: 1, name: \"JavaScript\", proficiency: \"expert\" }]
+   */
+  const skills = ref([])
+  
+  /**
+   * @type {Ref<Array>}
+   * Applications student has submitted to postings
+   * Example: [{ id: 1, posting_id: 5, status: \"pending\" }]
+   */
+  const applications = ref([])
+
+  /**
+   * Calculate profile completeness percentage (0-100)
+   * 
+   * WHAT: Determines how complete/filled out profile is
+   * HOW: Checks which fields are populated and adds points
+   * WHY: Prompts user to complete profile for better matches
+   * 
+   * ERROR HANDLING:
+   * - Returns 0 if profile not loaded
+   * - Caps at 100 max
+   * - Continues even if some fields missing
+   * 
+   * @type {ComputedRef<number>}
+   * @returns {number} 0-100 score
+   */
+  const profileCompleteness = computed(() => {
+    if (!profile.value) {
+      console.debug('[StudentStore] Profile not loaded, completeness = 0')
+      return 0
+    }
+    
+    let score = 0
+    
+    // BASIC INFO (20 points)
+    if (profile.value.first_name) score += 10
+    if (profile.value.last_name) score += 10
+    
+    // BIO/DESCRIPTION (20 points)
+    if (profile.value.bio) score += 20
+    
+    // LOCATION & AVAILABILITY (25 points)
+    if (profile.value.preferred_location) score += 10
+    if (profile.value.availability_start && profile.value.availability_end) score += 15
+    
+    // EDUCATION (20 points)
+    if (profile.value.gpa) score += 10
+    if (profile.value.academic_program) score += 10
+    
+    // SKILLS (15 points)
+    if (skills.value.length > 0) score += 15
+
+    const capped = Math.min(score, 100)
+    console.debug('[StudentStore] Profile completeness calculated', { score, capped })
+    return capped
+  })
+
+  /**
+   * Is profile fully complete? (100%)
+   * 
+   * @type {ComputedRef<boolean>}
+   * @returns {boolean} true if completeness >= 100
+   */
+  const isProfileComplete = computed(() => {
+    const complete = profileCompleteness.value >= 100
+    console.debug('[StudentStore] Profile completeness check', { isComplete: complete })
+    return complete
+  })
+
+  /**
+   * Update entire profile
+   * @param {Object} newProfile - Profile object from API
+   */
+  const setProfile = (newProfile) => { 
+    console.debug('[StudentStore] setProfile called', { hasProfile: !!newProfile })
+    profile.value = newProfile 
+  }
+  
+  /**
+   * Replace entire skills array
+   * @param {Array} newSkills - Array of skill objects
+   */
+  const setSkills = (newSkills) => { 
+    console.debug('[StudentStore] setSkills called', { count: newSkills?.length })
+    skills.value = newSkills 
+  }
+  
+  /**
+   * Add single skill to array
+   * @param {Object} skill - Skill object to add
+   */
+  const addSkill = (skill) => { 
+    console.debug('[StudentStore] addSkill called', { skillName: skill?.name })
+    skills.value.push(skill) 
+  }
+  
+  /**
+   * Update existing skill (finds by ID and replaces)
+   * FIX: Should validate ID exists before updating
+   * @param {Object} updatedSkill - Skill with updated values
+   */
+  const updateSkill = (updatedSkill) => {
+    console.debug('[StudentStore] updateSkill called', { skillId: updatedSkill?.id })
+    const index = skills.value.findIndex(s => s.id === updatedSkill.id)
+    if (index !== -1) {
+      skills.value[index] = updatedSkill
+      console.debug('[StudentStore] Skill updated successfully', { skillId: updatedSkill.id })
+    } else {
+      console.warn('[StudentStore] Skill not found in array', { skillId: updatedSkill.id })
+    }
+  }
+  
+  /**
+   * Remove skill from array
+   * @param {string|number} skillId - ID of skill to remove
+   */
+  const removeSkill = (skillId) => {
+    console.debug('[StudentStore] removeSkill called', { skillId })
+    const before = skills.value.length
+    skills.value = skills.value.filter(s => s.id !== skillId)
+    const after = skills.value.length
+    console.debug('[StudentStore] Skill removed', { skillId, removed: before > after })
+  }
+
+  /**
+   * Set applications array
+   * @param {Array} apps - Applications array from API
+   */
+  const setApplications = (apps) => { 
+    console.debug('[StudentStore] setApplications called', { count: apps?.length })
+    applications.value = apps 
+  }
+
+  // Store exports
+  return {
+    // Reactive state
+    profile,
+    skills,
+    applications,
+    
+    // Computed
+    profileCompleteness,
+    isProfileComplete,
+    
+    // Mutations
+    setProfile,
+    setSkills,
+    addSkill,
+    updateSkill,
+    removeSkill,
+    setApplications
+  }
+})

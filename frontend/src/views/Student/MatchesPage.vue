@@ -11,7 +11,71 @@ const { fetchMatches, matchStore, applyToMatch, isLoading } = useJobMatching()
 const errorStore = useErrorStore()
 const { filteredMatches, filters } = storeToRefs(matchStore)
 
-/**\n * Load matches when component mounts\n * ERROR HANDLING: Try-catch with error store\n */\nonMounted(async () => {\n  console.debug('[MatchesPage] Component mounted')\n  errorStore.clearError()\n  \n  try {\n    console.debug('[MatchesPage] Fetching job matches')\n    await fetchMatches()\n    console.log('[MatchesPage] Matches loaded successfully')\n  } catch (error) {\n    console.error('[MatchesPage] Failed to load matches', { error: error.message })\n    // Error already set in errorStore\n  }\n})\n\n/**\n * FIX: HIGH SEVERITY - Poor error handling and UX\n * \n * BEFORE (BAD):\n * - Used alert() for success (blocks UI, poor UX)\n * - Used console.error for failure (no UI feedback)\n * - No error store integration\n * \n * AFTER (GOOD):\n * - Uses error store for UI notification\n * - Provides feedback via global error bar\n * - Logs for debugging\n * - Allows user to continue without modal blocking\n */\nconst handleApply = async (matchId) => {\n  console.debug('[MatchesPage] handleApply called', { matchId })\n  errorStore.clearError()\n  \n  try {\n    console.debug('[MatchesPage] Submitting application', { postingId: matchId })\n    \n    // Apply to job with empty cover letter (user can add later)\n    const result = await applyToMatch(matchId, { cover_letter: '' })\n    \n    console.log('[MatchesPage] Application submitted successfully', { \n      postingId: matchId,\n      applicationId: result.id \n    })\n    \n    // SUCCESS: Show feedback\n    // TODO: Show toast notification instead of error bar\n    errorStore.setError('Application submitted successfully!', null, 200)\n    \n    // Optional: Refresh matches list\n    // Could also show a \"view applications\" button\n    \n  } catch (error) {\n    console.error('[MatchesPage] Failed to submit application', { \n      postingId: matchId,\n      error: error.message,\n      details: error.details,\n      statusCode: error.statusCode \n    })\n    // Error already set in errorStore, no need to set again\n  }\n}\n</script>
+/**
+ * Load matches when component mounts
+ * ERROR HANDLING: Try-catch with error store
+ */
+onMounted(async () => {
+  console.debug('[MatchesPage] Component mounted')
+  errorStore.clearError()
+  
+  try {
+    console.debug('[MatchesPage] Fetching job matches')
+    await fetchMatches()
+    console.log('[MatchesPage] Matches loaded successfully')
+  } catch (error) {
+    console.error('[MatchesPage] Failed to load matches', { error: error.message })
+    // Error already set in errorStore
+  }
+})
+
+/**
+ * FIX: HIGH SEVERITY - Poor error handling and UX
+ * 
+ * BEFORE (BAD):
+ * - Used alert() for success (blocks UI, poor UX)
+ * - Used console.error for failure (no UI feedback)
+ * - No error store integration
+ * 
+ * AFTER (GOOD):
+ * - Uses error store for UI notification
+ * - Provides feedback via global error bar
+ * - Logs for debugging
+ * - Allows user to continue without modal blocking
+ */
+const handleApply = async (matchId) => {
+  console.debug('[MatchesPage] handleApply called', { matchId })
+  errorStore.clearError()
+  
+  try {
+    console.debug('[MatchesPage] Submitting application', { postingId: matchId })
+    
+    // Apply to job with empty cover letter (user can add later)
+    const result = await applyToMatch(matchId, { cover_letter: '' })
+    
+    console.log('[MatchesPage] Application submitted successfully', { 
+      postingId: matchId,
+      applicationId: result.id 
+    })
+    
+    // SUCCESS: Show feedback
+    // TODO: Show toast notification instead of error bar
+    errorStore.setError('Application submitted successfully!', null, 200)
+    
+    // Optional: Refresh matches list
+    // Could also show a \"view applications\" button
+    
+  } catch (error) {
+    console.error('[MatchesPage] Failed to submit application', { 
+      postingId: matchId,
+      error: error.message,
+      details: error.details,
+      statusCode: error.statusCode 
+    })
+    // Error already set in errorStore, no need to set again
+  }
+}
+</script>
 
 <template>
   <div class="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -32,8 +96,14 @@ const { filteredMatches, filters } = storeToRefs(matchStore)
       </div>
 
       <!-- Global Error/Success Alert -->
-      <div v-if="errorStore.globalError" :class="[\n        'rounded-md p-4 border',\n        errorStore.globalError.statusCode === 200 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'\n      ]\">
-        <h3 :class="[\n          'text-sm font-medium',\n          errorStore.globalError.statusCode === 200 ? 'text-green-800' : 'text-red-800'\n        ]\">
+      <div v-if="errorStore.globalError" :class="[
+        'rounded-md p-4 border',
+        errorStore.globalError.statusCode === 200 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
+      ]">
+        <h3 :class="[
+          'text-sm font-medium',
+          errorStore.globalError.statusCode === 200 ? 'text-green-800' : 'text-red-800'
+        ]">
           {{ errorStore.globalError.message }}
         </h3>
       </div>

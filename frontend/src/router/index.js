@@ -94,7 +94,14 @@ const routes = [
     ]
   },
   
-  /**\n   * FIX: COORDINATOR ROUTES ADDED\n   * Previous bug: RegisterPage allowed 'coordinator' role in registration\n   * But router had no routes for coordinator, causing login to fail\n   * \n   * TODO: Implement coordinator views when backend is ready\n   * For now, placeholder route that might redirect to admin dashboard\n   */
+  /**
+   * FIX: COORDINATOR ROUTES ADDED
+   * Previous bug: RegisterPage allowed 'coordinator' role in registration
+   * But router had no routes for coordinator, causing login to fail
+   * 
+   * TODO: Implement coordinator views when backend is ready
+   * For now, placeholder route that might redirect to admin dashboard
+   */
   {
     path: '/coordinator',
     meta: { requiresAuth: true, role: 'coordinator' },
