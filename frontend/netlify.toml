@@ -1,0 +1,212 @@
+# ============================================================================
+# Netlify Configuration for OJT System Frontend
+# 
+# This file configures:
+# - Build command and output directory
+# - Environment variables
+# - Redirect rules for SPA routing
+# - Security headers
+# - Cache control policies
+# 
+# DEPLOYMENT FLOW:
+# 1. GitHub push to main branch
+# 2. Netlify webhook triggered
+# 3. Runs: npm run build (creates dist/)
+# 4. Publishes: dist/ directory
+# 5. Available at: https://yoursitename.netlify.app
+# ============================================================================
+
+[build]
+# WHAT: Shell command to build the production bundle
+# HOW: npm run build → Vite compiles Vue components to dist/
+# WHY: Produces optimized, minified assets for production
+command = "npm run build"
+
+# WHAT: Directory to publish to Netlify CDN
+# HOW: Netlify copies this folder to edge locations globally
+# WHY: Enables fast content delivery from nearest server
+publish = "dist/"
+
+# WHAT: Base directory for build context
+# HOW: Netlify changes to this directory before running build command
+# WHY: Repository has monorepo structure (backend/ + frontend/)
+base = "frontend/"
+
+# ============================================================================
+# BUILD ENVIRONMENT VARIABLES
+# 
+# These are set during the build process (not runtime)
+# Override per-environment in Netlify dashboard
+# ============================================================================
+
+[build.environment]
+# Node.js runtime version - must match your package.json engine requirements
+NODE_VERSION = "20"
+# NPM version for consistency
+NPM_VERSION = "10"
+
+# ============================================================================
+# REDIRECTS: Single Page Application (SPA) Routing
+# 
+# All routes must resolve to index.html so Vue Router can handle navigation
+# This prevents 404 errors on direct URL access to nested routes
+# 
+# Example:
+# - User visits: https://yoursitename.netlify.app/company/postings
+# - Browser requests: /company/postings (doesn't exist on server)
+# - Netlify redirects to: /index.html (status 200 - client thinks it got the page)
+# - Vue Router sees current URL and loads correct component
+# 
+# Without this: Direct link to /company/postings returns 404
+# With this: Direct link works perfectly
+# ============================================================================
+
+[[redirects]]
+# WHAT: Match any URL path
+from = "/*"
+
+# HOW: Redirect to index.html
+to = "/index.html"
+
+# WHY: Instead of 404, return 200 with index.html so Vue Router can handle it
+# STATUS CODES:
+# - 200 = Silent rewrite (browser doesn't know it happened)
+# - 301/302 = Redirect (browser changes URL)
+# We use 200 (rewrite) for SPA routing
+status = 200
+
+# WHEN: This rule applies only to non-existent files
+# Without condition: Would rewrite EVERYTHING (including CSS, JS)
+# With condition: Only non-existent paths get rewritten
+conditions = {Force = false}
+
+# ============================================================================
+# SECURITY HEADERS
+# 
+# These headers are sent with EVERY response to browser
+# Protect against XSS, clickjacking, MIME sniffing attacks
+# ============================================================================
+
+[[headers]]
+# Apply to all responses
+for = "/*"
+
+[headers.values]
+# Prevent clickjacking attack (embedding site in iframe)
+# SAMEORIGIN = Can only be framed by same origin
+X-Frame-Options = "SAMEORIGIN"
+
+# Prevent browser MIME type sniffing (attacks that guess file type)
+# Forces browser to trust Content-Type header
+X-Content-Type-Options = "nosniff"
+
+# Enable browser XSS protection
+# mode=block stops page load if XSS detected
+X-XSS-Protection = "1; mode=block"
+
+# Referrer policy: What info sent when user clicks external link
+# strict-origin-when-cross-origin:
+#   - Same site: Send full referrer
+#   - Different site: Send only origin (no path)
+# Balances privacy and functionality
+Referrer-Policy = "strict-origin-when-cross-origin"
+
+# Content Security Policy: Restrict which resources can be loaded
+# default-src 'self' = Only allow resources from same origin
+# allow CDN + External API in production
+Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:;"
+
+# ============================================================================
+# CACHE CONTROL: Asset Fingerprinting
+# 
+# Vue/Vite generates filenames with content hashes (e.g., index-abc123.js)
+# If content changes, filename changes, so browser automatically fetches new version
+# We can safely cache fingerprinted assets forever
+# 
+# For index.html: No caching, always check for updates
+# For assets: Aggressive caching (1 year)
+# ============================================================================
+
+# Cache assets forever (hash in filename ensures invalidation)
+[[headers]]
+# Rule for: dist/assets/style-abc123.css, dist/assets/main-def456.js, etc
+for = "dist/assets/*"
+
+[headers.values]
+# Cache-Control breakdown:
+# - public = CDN and browsers can cache
+# - max-age=31536000 = Cache for 1 year (31,536,000 seconds)
+# - immutable = Never expires (hash changed = new filename)
+# Result: Browser never requests updated version of fingerprinted assets
+Cache-Control = "public, max-age=31536000, immutable"
+
+# Never cache index.html (entry point)
+[[headers]]
+# Rule for: dist/index.html
+for = "dist/index.html"
+
+[headers.values]
+# Cache-Control breakdown:
+# - public = OK to cache
+# - max-age=0 = Cache for 0 seconds (always expired)
+# - must-revalidate = Browser must check server for fresh version
+# Result: Browser always fetches latest index.html
+# This way new deployments are immediately visible
+Cache-Control = "public, max-age=0, must-revalidate"
+
+# ============================================================================
+# ENVIRONMENT-SPECIFIC CONFIGURATION
+# 
+# [context.production] = Production environment (main branch)
+# [context.deploy-preview] = PR preview deploys
+# [context.branch-deploy] = Branch deploys
+# ============================================================================
+
+[context.production]
+# Production environment variables can be set per environment
+# In Netlify dashboard: Site settings > Build & deploy > Environment
+# They override [build.environment]
+environment = { NODE_ENV = "production", VITE_DEBUG_LOGGING = "false" }
+
+[context.deploy-preview]
+# PR preview builds - staging environment
+# Set different API URL for testing before merging
+environment = { NODE_ENV = "staging", VITE_DEBUG_LOGGING = "true" }
+
+[context.branch-deploy]
+# Branch deployments - development environment
+environment = { NODE_ENV = "development", VITE_DEBUG_LOGGING = "true" }
+
+# ============================================================================
+# FUNCTIONS (optional: serverless functions for backend-like operations)
+# 
+# If you add serverless functions later, they go in netlify/functions/
+# These let you run backend code (auth, API proxying, etc.) on Netlify
+# ============================================================================
+
+# [functions]
+# directory = "netlify/functions"
+
+# ============================================================================
+# DEPLOY NOTIFICATIONS (optional)
+# 
+# Notify Slack, email, etc. when deploy succeeds/fails
+# ============================================================================
+
+# [[deploy_notifications]]
+# provider = "slack"
+# auth_token = "$SLACK_BOT_TOKEN"
+# channel = "#deployments"
+# message_text = "Deployed $COMMIT_REF to $DEPLOY_URL"
+
+# ============================================================================
+# END OF NETFLIX CONFIGURATION
+# 
+# NEXT STEPS:
+# 1. Push this file to GitHub
+# 2. In Netlify dashboard, add environment variables:
+#    - VITE_API_BASE_URL=https://your-api.com/api
+#    - VITE_AUTH_TOKEN_KEY=ojt_jwt_token
+#    - etc.
+# 3. Every push to main triggers automatic build & deploy
+# ============================================================================
