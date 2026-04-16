@@ -17,6 +17,8 @@ export default defineConfig({
     sourcemap: process.env.NODE_ENV !== 'production',
   },
   test: {
-    environment: 'jsdom'
+    environment: 'jsdom',
+    // Exclude E2E tests from unit test runs
+    exclude: ['e2e/**', 'node_modules/**']
   }
 })
