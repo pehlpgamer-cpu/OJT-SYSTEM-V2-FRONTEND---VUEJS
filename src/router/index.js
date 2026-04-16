@@ -109,8 +109,7 @@ const routes = [
       {
         path: 'dashboard',
         name: 'CoordinatorDashboard',
-        // TODO: Create coordinator dashboard component
-        component: () => import('../views/Auth/LoginPage.vue')  // Placeholder
+        component: () => import('../views/Coordinator/Dashboard.vue')
       }
     ]
   },

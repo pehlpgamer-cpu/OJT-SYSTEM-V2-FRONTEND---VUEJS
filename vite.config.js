@@ -8,6 +8,14 @@ export default defineConfig({
     vue(),
     tailwindcss(),
   ],
+  // Base URL configuration for Netlify deployment
+  base: '/',
+  build: {
+    // Ensure dist directory is created and published
+    outDir: 'dist',
+    // Disable source maps in production for smaller bundle
+    sourcemap: process.env.NODE_ENV !== 'production',
+  },
   test: {
     environment: 'jsdom'
   }

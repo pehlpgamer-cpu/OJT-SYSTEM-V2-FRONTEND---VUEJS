@@ -42,8 +42,12 @@ const submitPosting = async () => {
     const validData = postingSchema.parse(preParse)
     
     await createPosting(validData)
-    alert("Job Posting created successfully! It will start as a draft.")
-    router.push('/company/postings')
+    // Success: clear errors and redirect to postings list
+    errorStore.clearError()
+    // Brief delay to maintain UX
+    setTimeout(() => {
+      router.push('/company/postings')
+    }, 500)
   } catch (err) {
     if (err instanceof z.ZodError) {
       const formattedErrors = {}
@@ -52,7 +56,8 @@ const submitPosting = async () => {
       })
       validationErrors.value = formattedErrors
     } else {
-      console.error('Failed to create posting', err)
+      // API error already stored in errorStore by apiClient
+      console.error('Job posting creation failed', err.message)
     }
   }
 }

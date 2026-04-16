@@ -27,11 +27,6 @@ command = "npm run build"
 # WHY: Enables fast content delivery from nearest server
 publish = "dist/"
 
-# WHAT: Base directory for build context
-# HOW: Netlify changes to this directory before running build command
-# WHY: Repository has monorepo structure (backend/ + frontend/)
-base = "frontend/"
-
 # ============================================================================
 # BUILD ENVIRONMENT VARIABLES
 # 
@@ -44,6 +39,10 @@ base = "frontend/"
 NODE_VERSION = "20"
 # NPM version for consistency
 NPM_VERSION = "10"
+# Production API endpoint URL
+VITE_API_BASE_URL = "https://ojt-system-v2-backend-nodejs.vercel.app/api"
+# Disable debug logging in production
+VITE_DEBUG_LOGGING = "false"
 
 # ============================================================================
 # REDIRECTS: Single Page Application (SPA) Routing
@@ -113,8 +112,9 @@ Referrer-Policy = "strict-origin-when-cross-origin"
 
 # Content Security Policy: Restrict which resources can be loaded
 # default-src 'self' = Only allow resources from same origin
-# allow CDN + External API in production
-Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:;"
+# connect-src allows API calls to backend (Vercel)
+# img-src allows external images (company logos, etc.)
+Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://ojt-system-v2-backend-nodejs.vercel.app; img-src 'self' data: https:; font-src 'self' data:;"
 
 # ============================================================================
 # CACHE CONTROL: Asset Fingerprinting

@@ -52,7 +52,7 @@ export function useAuth() {
    * ROLE-BASED ROUTING:
    * - student -> /student/dashboard
    * - company -> /company/dashboard
-   * - coordinator -> currently NO ROUTE (bug to fix)
+   * - coordinator -> /coordinator/dashboard (added in v2.1)
    * 
    * @async
    * @param {string} email - User email address

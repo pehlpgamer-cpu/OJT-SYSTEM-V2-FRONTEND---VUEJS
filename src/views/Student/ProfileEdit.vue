@@ -62,9 +62,12 @@ const handleSubmit = async () => {
   try {
     const validData = profileSchema.parse(formData.value)
     await updateProfile(validData)
-    // Send feedback then redirect
-    alert("Profile updated successfully!")
-    router.push('/student/dashboard')
+    // Success: show feedback and redirect
+    errorStore.clearError()
+    // Brief delay to allow user to see success message if added
+    setTimeout(() => {
+      router.push('/student/dashboard')
+    }, 500)
   } catch (err) {
     if (err instanceof z.ZodError) {
       const formattedErrors = {}
@@ -73,7 +76,8 @@ const handleSubmit = async () => {
       })
       validationErrors.value = formattedErrors
     } else {
-      console.error('Update failed', err)
+      // API error already in errorStore, just log for debugging
+      console.error('Profile update failed', err.message)
     }
   }
 }
