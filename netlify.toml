@@ -18,9 +18,9 @@
 
 [build]
 # WHAT: Shell command to build the production bundle
-# HOW: npm install installs all dependencies (including devDependencies), then Vite builds
-# WHY: npm install is more reliable than npm ci in Netlify environment for installing devDependencies
-command = "npm install && npm run build"
+# HOW: Explicitly install devDependencies with --production=false, then run Vite build
+# WHY: Netlify may set NODE_ENV=production which skips devDependencies by default
+command = "npm install --production=false && npm run build"
 
 # WHAT: Directory to publish to Netlify CDN
 # HOW: Netlify copies this folder to edge locations globally
