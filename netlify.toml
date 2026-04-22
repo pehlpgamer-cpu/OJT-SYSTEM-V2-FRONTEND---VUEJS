@@ -18,9 +18,9 @@
 
 [build]
 # WHAT: Shell command to build the production bundle
-# HOW: npm run build → Vite compiles Vue components to dist/
-# WHY: Produces optimized, minified assets for production
-command = "npm run build"
+# HOW: npm ci installs exact dependencies, then npm run build compiles via Vite
+# WHY: npm ci ensures all dependencies are installed before Vite can compile Vue components
+command = "npm ci && npm run build"
 
 # WHAT: Directory to publish to Netlify CDN
 # HOW: Netlify copies this folder to edge locations globally
