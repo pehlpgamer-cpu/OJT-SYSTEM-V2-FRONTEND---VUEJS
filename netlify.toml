@@ -75,9 +75,8 @@ to = "/index.html"
 status = 200
 
 # WHEN: This rule applies only to non-existent files
-# Without condition: Would rewrite EVERYTHING (including CSS, JS)
-# With condition: Only non-existent paths get rewritten
-conditions = {Force = false}
+# This rule will only match URLs that don't correspond to actual files/folders
+# HTML, CSS, JS files are served directly; all other paths rewrite to index.html
 
 # ============================================================================
 # SECURITY HEADERS
