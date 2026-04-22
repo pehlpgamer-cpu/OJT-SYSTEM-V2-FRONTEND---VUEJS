@@ -18,9 +18,9 @@
 
 [build]
 # WHAT: Shell command to build the production bundle
-# HOW: npm ci installs exact dependencies, then npm run build compiles via Vite
-# WHY: npm ci ensures all dependencies are installed before Vite can compile Vue components
-command = "npm ci && npm run build"
+# HOW: npm install installs all dependencies (including devDependencies), then Vite builds
+# WHY: npm install is more reliable than npm ci in Netlify environment for installing devDependencies
+command = "npm install && npm run build"
 
 # WHAT: Directory to publish to Netlify CDN
 # HOW: Netlify copies this folder to edge locations globally
@@ -37,8 +37,6 @@ publish = "dist/"
 [build.environment]
 # Node.js runtime version - must match your package.json engine requirements
 NODE_VERSION = "20"
-# NPM version for consistency
-NPM_VERSION = "10"
 # Production API endpoint URL
 VITE_API_BASE_URL = "https://ojt-system-v2-backend-nodejs.vercel.app/api"
 # Disable debug logging in production
