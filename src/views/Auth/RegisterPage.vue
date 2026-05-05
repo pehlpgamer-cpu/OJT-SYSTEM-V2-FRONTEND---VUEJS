@@ -36,7 +36,7 @@ const registerSchema = z.object({
     .regex(/\d/, 'Password must contain at least one digit')
     .regex(/[!@#$%^&*]/, 'Password must contain at least one special character (!@#$%^&*)'),
   confirmPassword: z.string(),
-  role: z.enum(['student', 'company', 'coordinator'])
+  role: z.enum(['student', 'company'])
 }).refine(data => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ['confirmPassword']
@@ -66,10 +66,10 @@ const handleSubmit = async () => {
   } catch (err) {
     if (err instanceof z.ZodError) {
       // VALIDATION ERROR: Format and display
-      console.warn('[RegisterPage] Validation errors', { errorCount: err.errors.length })
+      console.warn('[RegisterPage] Validation errors', { errorCount: err.issues.length })
       
       const formattedErrors = {}
-      err.errors.forEach(e => {
+      err.issues.forEach(e => {
         formattedErrors[e.path[0]] = e.message
         console.debug('[RegisterPage] Validation error', { field: e.path[0], message: e.message })
       })

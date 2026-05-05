@@ -55,10 +55,10 @@ const handleSubmit = async () => {
   } catch (err) {
     if (err instanceof z.ZodError) {
       // VALIDATION ERROR: Format Zod errors for display
-      console.warn('[LoginPage] Validation errors', { errorCount: err.errors.length })
+      console.warn('[LoginPage] Validation errors', { errorCount: err.issues.length })
       
       const formattedErrors = {}
-      err.errors.forEach(e => {
+      err.issues.forEach(e => {
         formattedErrors[e.path[0]] = e.message
         console.debug('[LoginPage] Validation error', { field: e.path[0], message: e.message })
       })

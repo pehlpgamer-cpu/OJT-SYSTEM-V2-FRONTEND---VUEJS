@@ -51,7 +51,7 @@ const submitPosting = async () => {
   } catch (err) {
     if (err instanceof z.ZodError) {
       const formattedErrors = {}
-      err.errors.forEach(e => {
+      err.issues.forEach(e => {
         formattedErrors[e.path[0]] = e.message
       })
       validationErrors.value = formattedErrors
