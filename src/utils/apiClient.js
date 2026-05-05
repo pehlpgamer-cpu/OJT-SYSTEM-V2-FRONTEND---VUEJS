@@ -7,7 +7,7 @@ import { useErrorStore } from '../stores/errorStore'
  * Features:
  * - Automatic JWT token attachment to Authorization header
  * - Request timeout handling (30 seconds default)
- * - Cross-origin credential support
+ * - Same-origin credential support for the Netlify API proxy
  * - 401 unauthorized handling with auto-logout
  * - Standardized error response formatting
  * - Exponential backoff retry logic for network failures
@@ -84,9 +84,9 @@ export const apiClient = async (endpoint, options = {}) => {
       const fetchPromise = fetch(url, {
         ...options,
         headers,
-        // CREDENTIALS: Include credentials for cross-origin requests with auth
-        credentials: 'include', // Allows sending cookies and auth headers cross-origin
-        // Note: CORS policy must allow credentials on server side
+        // CREDENTIALS: JWT auth uses Authorization headers; avoid cross-origin
+        // credentials so production can use the Netlify /api proxy cleanly.
+        credentials: options.credentials || 'same-origin',
       })
 
       // TIMEOUT HANDLING: Promise race between actual request and timeout
@@ -150,14 +150,16 @@ export const apiClient = async (endpoint, options = {}) => {
         }
 
         // STANDARDIZED ERROR RESPONSE formatting
-        const errorBody = payload?.error || payload || {}
-        const errorMessage = errorBody?.message || response.statusText || 'An unknown error occurred'
-        const errorDetails = errorBody?.details || null
+        const errorBody = typeof payload?.error === 'object' && payload.error !== null
+          ? payload.error
+          : payload || {}
+        const errorMessage = payload?.message || errorBody?.message || payload?.error || response.statusText || 'An unknown error occurred'
+        const errorDetails = payload?.details || errorBody?.details || null
 
         const error = new Error(errorMessage)
         error.statusCode = response.status
         error.details = errorDetails
-        error.code = errorBody?.code || null
+        error.code = payload?.code || errorBody?.code || null
         
         console.error('[API] Throwing error', { 
           endpoint, 

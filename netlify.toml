@@ -37,13 +37,13 @@ publish = "dist/"
 [build.environment]
 # Node.js runtime version - must match your package.json engine requirements
 NODE_VERSION = "20"
-# Production API endpoint URL
-VITE_API_BASE_URL = "https://ojt-system-v2-backend-nodejs.vercel.app/api"
+# Production API path. Netlify proxies this to the Vercel backend below.
+VITE_API_BASE_URL = "/api"
 # Disable debug logging in production
 VITE_DEBUG_LOGGING = "false"
 
 # ============================================================================
-# REDIRECTS: Single Page Application (SPA) Routing
+# REDIRECTS: API Proxy + Single Page Application (SPA) Routing
 # 
 # All routes must resolve to index.html so Vue Router can handle navigation
 # This prevents 404 errors on direct URL access to nested routes
@@ -59,7 +59,16 @@ VITE_DEBUG_LOGGING = "false"
 # ============================================================================
 
 [[redirects]]
-# WHAT: Match any URL path
+# WHAT: Proxy API requests through Netlify
+# HOW: Browser calls same-origin /api/*; Netlify forwards to Vercel backend
+# WHY: Avoids browser CORS/preflight failures in production
+from = "/api/*"
+to = "https://ojt-system-v2-backend-nodejs.vercel.app/api/:splat"
+status = 200
+force = true
+
+[[redirects]]
+# WHAT: Match any non-API URL path
 from = "/*"
 
 # HOW: Redirect to index.html
@@ -109,7 +118,7 @@ Referrer-Policy = "strict-origin-when-cross-origin"
 
 # Content Security Policy: Restrict which resources can be loaded
 # default-src 'self' = Only allow resources from same origin
-# connect-src allows API calls to backend (Vercel)
+# connect-src allows API calls through same-origin Netlify proxy
 # img-src allows external images (company logos, etc.)
 Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://ojt-system-v2-backend-nodejs.vercel.app; img-src 'self' data: https:; font-src 'self' data:;"
 
