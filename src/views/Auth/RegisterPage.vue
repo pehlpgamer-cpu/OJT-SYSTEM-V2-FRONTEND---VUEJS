@@ -10,6 +10,7 @@ const { register, isLoading } = useAuth()
 const errorStore = useErrorStore()
 
 const formData = ref({
+  name: '',
   email: '',
   password: '',
   confirmPassword: '',
@@ -29,7 +30,12 @@ const validationErrors = ref({})
  * WHY: Prevents users from registering passwords that fail backend validation
  */
 const registerSchema = z.object({
-  email: z.string().email('Invalid email address'),
+  name: z.string()
+    .trim()
+    .min(2, 'Name must be at least 2 characters')
+    .max(255, 'Name must be 255 characters or less')
+    .regex(/^[a-zA-Z\s'-]+$/, 'Name can only contain letters, spaces, hyphens, and apostrophes'),
+  email: z.string().trim().email('Invalid email address'),
   password: z.string()
     .min(8, 'Password must be at least 8 characters')
     .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
@@ -55,9 +61,12 @@ const handleSubmit = async () => {
     
     console.debug('[RegisterPage] Form validation passed, calling register')
     
-    // API PAYLOAD: Remove confirmPassword before sending
-    // Backend only expects email, password, role
-    const { confirmPassword, ...apiPayload } = validData
+    // API PAYLOAD: Backend expects snake_case password confirmation.
+    const { confirmPassword, ...registrationData } = validData
+    const apiPayload = {
+      ...registrationData,
+      password_confirmation: confirmPassword
+    }
     console.debug('[RegisterPage] Sending to backend', { email: apiPayload.email.split('@')[0] + '@...', role: apiPayload.role })
     
     await register(apiPayload)
@@ -75,6 +84,22 @@ const handleSubmit = async () => {
       })
       validationErrors.value = formattedErrors
     } else {
+      if (err.details && typeof err.details === 'object') {
+        const fieldErrors = {}
+
+        Object.entries(err.details).forEach(([field, messages]) => {
+          const formField = field === 'password_confirmation' ? 'confirmPassword' : field
+
+          if (['name', 'email', 'password', 'confirmPassword', 'role'].includes(formField)) {
+            fieldErrors[formField] = Array.isArray(messages) ? messages.join(', ') : String(messages)
+          }
+        })
+
+        if (Object.keys(fieldErrors).length > 0) {
+          validationErrors.value = fieldErrors
+        }
+      }
+
       // API ERROR: Handled by useAuth
       console.error('[RegisterPage] Registration failed', { 
         error: err.message,
@@ -110,17 +135,35 @@ const handleSubmit = async () => {
         <div class="space-y-4">
           <div>
             <label class="block text-sm font-medium text-gray-700">Account Type</label>
-            <select v-model="formData.role" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md border">
+            <select id="role" name="role" v-model="formData.role" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md border">
               <option value="student">Student</option>
               <option value="company">Company</option>
             </select>
           </div>
 
           <div>
+            <label class="block text-sm font-medium text-gray-700">Full name</label>
+            <input
+              v-model="formData.name"
+              id="name"
+              name="name"
+              type="text"
+              autocomplete="name"
+              required
+              class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              :class="{'border-red-300': validationErrors.name}"
+            />
+            <span v-if="validationErrors.name" class="text-red-500 text-xs mt-1">{{ validationErrors.name }}</span>
+          </div>
+
+          <div>
             <label class="block text-sm font-medium text-gray-700">Email address</label>
             <input 
               v-model="formData.email" 
+              id="email"
+              name="email"
               type="email" 
+              autocomplete="email"
               required
               class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
               :class="{'border-red-300': validationErrors.email}"
@@ -132,7 +175,10 @@ const handleSubmit = async () => {
             <label class="block text-sm font-medium text-gray-700">Password</label>
             <input 
               v-model="formData.password" 
+              id="password"
+              name="password"
               type="password" 
+              autocomplete="new-password"
               required
               class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
               :class="{'border-red-300': validationErrors.password}"
@@ -144,7 +190,10 @@ const handleSubmit = async () => {
             <label class="block text-sm font-medium text-gray-700">Confirm Password</label>
             <input 
               v-model="formData.confirmPassword" 
+              id="confirmPassword"
+              name="confirmPassword"
               type="password" 
+              autocomplete="new-password"
               required
               class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
               :class="{'border-red-300': validationErrors.confirmPassword}"

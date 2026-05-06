@@ -154,7 +154,7 @@ export const apiClient = async (endpoint, options = {}) => {
           ? payload.error
           : payload || {}
         const errorMessage = payload?.message || errorBody?.message || payload?.error || response.statusText || 'An unknown error occurred'
-        const errorDetails = payload?.details || errorBody?.details || null
+        const errorDetails = payload?.details || errorBody?.details || payload?.errors || errorBody?.errors || null
 
         const error = new Error(errorMessage)
         error.statusCode = response.status

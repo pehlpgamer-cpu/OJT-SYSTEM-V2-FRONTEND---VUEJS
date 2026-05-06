@@ -110,7 +110,7 @@ export function useAuth() {
    * User registration with account details
    * 
    * WHAT: POST to /auth/register with user data
-   * HOW: Send email, password, role; backend creates account
+   * HOW: Send name, email, password, password confirmation, and role; backend creates account
    * WHY: Allows new users to create accounts
    * 
    * FLOW:
@@ -126,7 +126,7 @@ export function useAuth() {
    * 
    * @async
    * @param {Object} userData - Registration data
-   *   Fields: { email, password, role: 'student'|'company'|'coordinator' }
+   *   Fields: { name, email, password, password_confirmation, role: 'student'|'company'|'coordinator' }
    * @returns {Promise<void>}
    * @throws {Error} Validation error, email exists, server error
    */
