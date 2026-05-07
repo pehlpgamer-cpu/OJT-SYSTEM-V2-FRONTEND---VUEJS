@@ -2,7 +2,67 @@ import { useAuthStore } from '../stores/authStore'
 import { useErrorStore } from '../stores/errorStore'
 
 const IDEMPOTENT_METHODS = ['GET', 'HEAD', 'OPTIONS']
-const NEVER_RETRY_ENDPOINTS = ['/auth/login', '/auth/register']
+const NEVER_RETRY_ENDPOINTS = ['/auth/login', '/auth/register', '/auth/refresh']
+
+/**
+ * Decode JWT payload without verifying signature (safe on client)
+ */
+function decodeTokenPayload(token) {
+  try {
+    const parts = token.split('.')
+    if (parts.length !== 3) return null
+    const payload = JSON.parse(atob(parts[1]))
+    return payload
+  } catch (error) {
+    console.warn('[API] Failed to decode token payload', error)
+    return null
+  }
+}
+
+/**
+ * Refresh token if it expires within 1 hour
+ */
+async function refreshTokenIfNeeded(authStore, baseURL) {
+  const token = authStore.token
+  if (!token) return
+
+  const payload = decodeTokenPayload(token)
+  if (!payload?.exp) return
+
+  // If token expires within 1 hour, refresh it
+  const timeUntilExpiry = payload.exp * 1000 - Date.now()
+  const ONE_HOUR = 60 * 60 * 1000
+
+  if (timeUntilExpiry < ONE_HOUR) {
+    try {
+      console.debug('[API] Token expiring soon, refreshing', { expiresIn: Math.round(timeUntilExpiry / 1000) + 's' })
+      const response = await fetch(`${baseURL}/auth/refresh`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        credentials: 'include',
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        console.debug('[API] Token refreshed successfully')
+        authStore.setToken(data.token)
+        authStore.setUser(data.user)
+        return data.token
+      } else {
+        console.warn('[API] Token refresh returned non-ok status', { status: response.status })
+        authStore.logout()
+        return null
+      }
+    } catch (error) {
+      console.warn('[API] Token refresh failed', error)
+      authStore.logout()
+      return null
+    }
+  }
+}
 
 export const apiClient = async (endpoint, options = {}) => {
   const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api'
@@ -42,6 +102,12 @@ export const apiClient = async (endpoint, options = {}) => {
         maxRetries
       })
 
+      // Refresh token if expiring soon (1 hour window)
+      const newToken = await refreshTokenIfNeeded(authStore, baseURL)
+      if (newToken) {
+        headers.Authorization = `Bearer ${newToken}`
+      }
+
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), timeout)
       if (options.signal) {
@@ -58,7 +124,8 @@ export const apiClient = async (endpoint, options = {}) => {
           ...options,
           method,
           headers,
-          credentials: options.credentials || 'same-origin',
+          // Use 'include' to support cross-domain deployments with JWT in Authorization header
+          credentials: options.credentials || 'include',
           signal: controller.signal,
         })
       } catch (error) {
