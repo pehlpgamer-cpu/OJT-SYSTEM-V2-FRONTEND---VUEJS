@@ -9,8 +9,8 @@ export function useStudentProfile() {
   const fetchProfile = async () => {
     isLoading.value = true
     try {
-      const data = await apiClient('/student/profile', { method: 'GET' })
-      store.setProfile(data.profile || data)
+      const data = await apiClient('/students/profile', { method: 'GET' })
+      store.setProfile(data.profile || data.data || data)
       return data
     } finally {
       isLoading.value = false
@@ -20,11 +20,11 @@ export function useStudentProfile() {
   const updateProfile = async (profileData) => {
     isLoading.value = true
     try {
-      const data = await apiClient('/student/profile', {
+      const data = await apiClient('/students/profile', {
         method: 'PUT',
         body: JSON.stringify(profileData)
       })
-      store.setProfile(data.profile || data)
+      store.setProfile(data.profile || data.data || data)
       return data
     } finally {
       isLoading.value = false
@@ -34,8 +34,8 @@ export function useStudentProfile() {
   const fetchSkills = async () => {
     isLoading.value = true
     try {
-      const data = await apiClient('/student/skills', { method: 'GET' })
-      store.setSkills(data.skills || data)
+      const data = await apiClient('/students/skills', { method: 'GET' })
+      store.setSkills(data.skills || data.data || data)
       return data
     } finally {
       isLoading.value = false
@@ -45,11 +45,11 @@ export function useStudentProfile() {
   const addSkill = async (skillData) => {
     isLoading.value = true
     try {
-      const data = await apiClient('/student/skills', {
+      const data = await apiClient('/students/skills', {
         method: 'POST',
         body: JSON.stringify(skillData)
       })
-      store.addSkill(data.skill || data)
+      store.addSkill(data.skill || data.data || data)
       return data
     } finally {
       isLoading.value = false
@@ -59,11 +59,11 @@ export function useStudentProfile() {
   const updateSkill = async (skillId, skillData) => {
     isLoading.value = true
     try {
-      const data = await apiClient(`/student/skills/${skillId}`, {
+      const data = await apiClient(`/students/skills/${skillId}`, {
         method: 'PUT',
         body: JSON.stringify(skillData)
       })
-      store.updateSkill(data.skill || data) // assuming API returns updated skill
+      store.updateSkill(data.skill || data.data || data) // assuming API returns updated skill
       return data
     } finally {
       isLoading.value = false
@@ -73,7 +73,7 @@ export function useStudentProfile() {
   const deleteSkill = async (skillId) => {
     isLoading.value = true
     try {
-      await apiClient(`/student/skills/${skillId}`, { method: 'DELETE' })
+      await apiClient(`/students/skills/${skillId}`, { method: 'DELETE' })
       store.removeSkill(skillId)
     } finally {
       isLoading.value = false

@@ -21,6 +21,16 @@ vi.mock('vue-router', () => ({
 import { useAuth } from '../../src/composables/useAuth'
 import { useAuthStore } from '../../src/stores/authStore'
 
+const createToken = () => [
+  'eyJhbGciOiJIUzI1NiJ9',
+  Buffer.from(JSON.stringify({
+    id: 1,
+    role: 'student',
+    exp: Math.floor(Date.now() / 1000) + 3600
+  })).toString('base64url'),
+  'signature'
+].join('.')
+
 describe('useAuth Composable', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
@@ -46,7 +56,7 @@ describe('useAuth Composable', () => {
     const { logout } = useAuth()
 
     // First set some auth data
-    authStore.setAuth('test-token', { email: 'test@example.com' }, 'student')
+    authStore.setAuth(createToken(), { email: 'test@example.com', role: 'student' }, 'student')
     expect(authStore.isAuthenticated).toBe(true)
 
     // Then logout

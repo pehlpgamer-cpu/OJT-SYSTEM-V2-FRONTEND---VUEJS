@@ -4,6 +4,12 @@ import { useAuthStore } from '../stores/authStore'
 import { useErrorStore } from '../stores/errorStore'
 import { apiClient } from '../utils/apiClient'
 
+const ROLE_ROUTE_MAP = {
+  student: '/student/dashboard',
+  company: '/company/dashboard',
+  coordinator: '/coordinator/dashboard'
+}
+
 /**
  * Authentication Composable
  * 
@@ -38,6 +44,21 @@ export function useAuth() {
    * Disables submit button while request is pending
    */
   const isLoading = ref(false)
+
+  const routeForRole = (role) => ROLE_ROUTE_MAP[role] || null
+
+  const navigateForRole = async (role) => {
+    const targetRoute = routeForRole(role)
+
+    if (!targetRoute) {
+      authStore.logout()
+      errorStore.setError('Unsupported account role. Please contact support.', null, 403)
+      throw new Error('Unsupported account role')
+    }
+
+    console.debug('[useAuth] Navigating to dashboard', { targetRoute })
+    await router.push(targetRoute)
+  }
 
   /**
    * User login with email and password
@@ -87,12 +108,7 @@ export function useAuth() {
       console.log('[useAuth] User authenticated and stored', { role: payload.user.role })
       
       // ROLE-BASED NAVIGATION: Route to correct dashboard
-      const targetRoute = payload.user.role === 'student' 
-        ? '/student/dashboard' 
-        : '/company/dashboard'
-      
-      console.debug('[useAuth] Navigating to dashboard', { targetRoute })
-      await router.push(targetRoute)
+      await navigateForRole(payload.user.role)
     } catch (error) {
       console.error('[useAuth] Login failed', { 
         email: email.split('@')[0] + '@...', 
@@ -126,7 +142,7 @@ export function useAuth() {
    * 
    * @async
    * @param {Object} userData - Registration data
-   *   Fields: { name, email, password, password_confirmation, role: 'student'|'company'|'coordinator' }
+   *   Fields: { name, email, password, password_confirmation, role: 'student'|'company' }
    * @returns {Promise<void>}
    * @throws {Error} Validation error, email exists, server error
    */
@@ -190,11 +206,28 @@ export function useAuth() {
     await router.push('/login')
   }
 
+  const refreshCurrentUser = async () => {
+    const payload = await apiClient('/user', {
+      method: 'GET',
+      retries: 0,
+    })
+    const currentUser = payload?.data?.user || payload?.user
+
+    if (!currentUser) {
+      authStore.logout()
+      throw new Error('Current user payload missing')
+    }
+
+    authStore.setFreshUser(currentUser)
+    return currentUser
+  }
+
   // Composable API exports
   return {
     login,
     register,
     logout,
+    refreshCurrentUser,
     isLoading
   }
 }

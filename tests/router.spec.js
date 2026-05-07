@@ -12,6 +12,18 @@ global.localStorage = localStorageMock
 
 import { useAuthStore } from '../src/stores/authStore'
 
+const createToken = () => [
+  'eyJhbGciOiJIUzI1NiJ9',
+  Buffer.from(JSON.stringify({
+    id: 1,
+    role: 'student',
+    exp: Math.floor(Date.now() / 1000) + 3600
+  })).toString('base64url'),
+  'signature'
+].join('.')
+
+const VALID_TOKEN = createToken()
+
 /**
  * Router Navigation Guard Tests
  * 
@@ -31,10 +43,10 @@ describe('Router Navigation Guards', () => {
   describe('Authentication Guard (requiresAuth)', () => {
     it('allows authenticated users to access protected routes', () => {
       const authStore = useAuthStore()
-      authStore.setAuth('test-token', { id: 1, email: 'test@example.com' }, 'student')
+      authStore.setAuth(VALID_TOKEN, { id: 1, email: 'test@example.com' }, 'student')
 
       expect(authStore.isAuthenticated).toBe(true)
-      expect(authStore.token).toBe('test-token')
+      expect(authStore.token).toBe(VALID_TOKEN)
     })
 
     it('denies unauthenticated users from accessing protected routes', () => {
@@ -48,7 +60,7 @@ describe('Router Navigation Guards', () => {
       const authStore = useAuthStore()
       
       // Set up auth
-      authStore.setAuth('test-token', { id: 1, email: 'test@example.com' }, 'student')
+      authStore.setAuth(VALID_TOKEN, { id: 1, email: 'test@example.com' }, 'student')
       expect(authStore.isAuthenticated).toBe(true)
       
       // Logout
@@ -75,7 +87,7 @@ describe('Router Navigation Guards', () => {
 
     it('redirects authenticated student away from login page', () => {
       const authStore = useAuthStore()
-      authStore.setAuth('token', { id: 1, email: 'student@example.com' }, 'student')
+      authStore.setAuth(VALID_TOKEN, { id: 1, email: 'student@example.com' }, 'student')
 
       expect(authStore.isAuthenticated).toBe(true)
       expect(authStore.role).toBe('student')
@@ -84,7 +96,7 @@ describe('Router Navigation Guards', () => {
 
     it('redirects authenticated company away from login page', () => {
       const authStore = useAuthStore()
-      authStore.setAuth('token', { id: 1, company_name: 'Tech Corp' }, 'company')
+      authStore.setAuth(VALID_TOKEN, { id: 1, company_name: 'Tech Corp' }, 'company')
 
       expect(authStore.isAuthenticated).toBe(true)
       expect(authStore.role).toBe('company')
@@ -93,7 +105,7 @@ describe('Router Navigation Guards', () => {
 
     it('redirects authenticated coordinator away from login page', () => {
       const authStore = useAuthStore()
-      authStore.setAuth('token', { id: 1, name: 'Coordinator' }, 'coordinator')
+      authStore.setAuth(VALID_TOKEN, { id: 1, name: 'Coordinator' }, 'coordinator')
 
       expect(authStore.isAuthenticated).toBe(true)
       expect(authStore.role).toBe('coordinator')
@@ -104,7 +116,7 @@ describe('Router Navigation Guards', () => {
   describe('Role-Based Access Control (RBAC)', () => {
     it('allows student to access student routes', () => {
       const authStore = useAuthStore()
-      authStore.setAuth('token', { id: 1, full_name: 'John' }, 'student')
+      authStore.setAuth(VALID_TOKEN, { id: 1, full_name: 'John' }, 'student')
 
       expect(authStore.role).toBe('student')
       // Mock: User can access /student/dashboard, /student/matches, /student/profile/edit
@@ -112,7 +124,7 @@ describe('Router Navigation Guards', () => {
 
     it('allows company to access company routes', () => {
       const authStore = useAuthStore()
-      authStore.setAuth('token', { id: 1, company_name: 'Tech Corp' }, 'company')
+      authStore.setAuth(VALID_TOKEN, { id: 1, company_name: 'Tech Corp' }, 'company')
 
       expect(authStore.role).toBe('company')
       // Mock: User can access /company/dashboard, /company/postings, /company/profile/edit
@@ -120,7 +132,7 @@ describe('Router Navigation Guards', () => {
 
     it('allows coordinator to access coordinator routes', () => {
       const authStore = useAuthStore()
-      authStore.setAuth('token', { id: 1, name: 'Admin' }, 'coordinator')
+      authStore.setAuth(VALID_TOKEN, { id: 1, name: 'Admin' }, 'coordinator')
 
       expect(authStore.role).toBe('coordinator')
       // Mock: User can access /coordinator/dashboard
@@ -128,7 +140,7 @@ describe('Router Navigation Guards', () => {
 
     it('prevents student from accessing company routes', () => {
       const authStore = useAuthStore()
-      authStore.setAuth('token', { id: 1, full_name: 'John' }, 'student')
+      authStore.setAuth(VALID_TOKEN, { id: 1, full_name: 'John' }, 'student')
 
       expect(authStore.role).toBe('student')
       // Mock: Should redirect to /student/dashboard when accessing /company/*
@@ -136,7 +148,7 @@ describe('Router Navigation Guards', () => {
 
     it('prevents company from accessing student routes', () => {
       const authStore = useAuthStore()
-      authStore.setAuth('token', { id: 1, company_name: 'Tech Corp' }, 'company')
+      authStore.setAuth(VALID_TOKEN, { id: 1, company_name: 'Tech Corp' }, 'company')
 
       expect(authStore.role).toBe('company')
       // Mock: Should redirect to /company/dashboard when accessing /student/*
@@ -144,7 +156,7 @@ describe('Router Navigation Guards', () => {
 
     it('prevents student and company from accessing coordinator routes', () => {
       const studentAuthStore = useAuthStore()
-      studentAuthStore.setAuth('token', { id: 1, full_name: 'John' }, 'student')
+      studentAuthStore.setAuth(VALID_TOKEN, { id: 1, full_name: 'John' }, 'student')
 
       expect(studentAuthStore.role).toBe('student')
       // Mock: Should redirect to /student/dashboard when accessing /coordinator/*
@@ -152,7 +164,7 @@ describe('Router Navigation Guards', () => {
       // Create new pinia for company test
       setActivePinia(createPinia())
       const companyAuthStore = useAuthStore()
-      companyAuthStore.setAuth('token', { id: 1, company_name: 'Tech Corp' }, 'company')
+      companyAuthStore.setAuth(VALID_TOKEN, { id: 1, company_name: 'Tech Corp' }, 'company')
 
       expect(companyAuthStore.role).toBe('company')
       // Mock: Should redirect to /company/dashboard when accessing /coordinator/*
@@ -163,7 +175,7 @@ describe('Router Navigation Guards', () => {
     describe('Student Routes', () => {
       it('student can access /student/dashboard', () => {
         const authStore = useAuthStore()
-        authStore.setAuth('token', { id: 1, full_name: 'John' }, 'student')
+        authStore.setAuth(VALID_TOKEN, { id: 1, full_name: 'John' }, 'student')
 
         expect(authStore.isAuthenticated).toBe(true)
         expect(authStore.role).toBe('student')
@@ -171,7 +183,7 @@ describe('Router Navigation Guards', () => {
 
       it('student can access /student/matches', () => {
         const authStore = useAuthStore()
-        authStore.setAuth('token', { id: 1, full_name: 'John' }, 'student')
+        authStore.setAuth(VALID_TOKEN, { id: 1, full_name: 'John' }, 'student')
 
         expect(authStore.isAuthenticated).toBe(true)
         expect(authStore.role).toBe('student')
@@ -179,7 +191,7 @@ describe('Router Navigation Guards', () => {
 
       it('student can access /student/profile/edit', () => {
         const authStore = useAuthStore()
-        authStore.setAuth('token', { id: 1, full_name: 'John' }, 'student')
+        authStore.setAuth(VALID_TOKEN, { id: 1, full_name: 'John' }, 'student')
 
         expect(authStore.isAuthenticated).toBe(true)
         expect(authStore.role).toBe('student')
@@ -189,7 +201,7 @@ describe('Router Navigation Guards', () => {
     describe('Company Routes', () => {
       it('company can access /company/dashboard', () => {
         const authStore = useAuthStore()
-        authStore.setAuth('token', { id: 1, company_name: 'Tech' }, 'company')
+        authStore.setAuth(VALID_TOKEN, { id: 1, company_name: 'Tech' }, 'company')
 
         expect(authStore.isAuthenticated).toBe(true)
         expect(authStore.role).toBe('company')
@@ -197,7 +209,7 @@ describe('Router Navigation Guards', () => {
 
       it('company can access /company/postings', () => {
         const authStore = useAuthStore()
-        authStore.setAuth('token', { id: 1, company_name: 'Tech' }, 'company')
+        authStore.setAuth(VALID_TOKEN, { id: 1, company_name: 'Tech' }, 'company')
 
         expect(authStore.isAuthenticated).toBe(true)
         expect(authStore.role).toBe('company')
@@ -205,7 +217,7 @@ describe('Router Navigation Guards', () => {
 
       it('company can access /company/postings/new', () => {
         const authStore = useAuthStore()
-        authStore.setAuth('token', { id: 1, company_name: 'Tech' }, 'company')
+        authStore.setAuth(VALID_TOKEN, { id: 1, company_name: 'Tech' }, 'company')
 
         expect(authStore.isAuthenticated).toBe(true)
         expect(authStore.role).toBe('company')
@@ -213,7 +225,7 @@ describe('Router Navigation Guards', () => {
 
       it('company can access /company/profile/edit', () => {
         const authStore = useAuthStore()
-        authStore.setAuth('token', { id: 1, company_name: 'Tech' }, 'company')
+        authStore.setAuth(VALID_TOKEN, { id: 1, company_name: 'Tech' }, 'company')
 
         expect(authStore.isAuthenticated).toBe(true)
         expect(authStore.role).toBe('company')
@@ -223,7 +235,7 @@ describe('Router Navigation Guards', () => {
     describe('Coordinator Routes', () => {
       it('coordinator can access /coordinator/dashboard', () => {
         const authStore = useAuthStore()
-        authStore.setAuth('token', { id: 1, name: 'Admin' }, 'coordinator')
+        authStore.setAuth(VALID_TOKEN, { id: 1, name: 'Admin' }, 'coordinator')
 
         expect(authStore.isAuthenticated).toBe(true)
         expect(authStore.role).toBe('coordinator')
@@ -241,7 +253,7 @@ describe('Router Navigation Guards', () => {
 
     it('redirects student to /student/dashboard when accessing /login while authenticated', () => {
       const authStore = useAuthStore()
-      authStore.setAuth('token', { id: 1, full_name: 'John' }, 'student')
+      authStore.setAuth(VALID_TOKEN, { id: 1, full_name: 'John' }, 'student')
 
       expect(authStore.role).toBe('student')
       // Mock: Accessing /login should redirect to /student/dashboard
@@ -249,7 +261,7 @@ describe('Router Navigation Guards', () => {
 
     it('redirects company to /company/dashboard when accessing /register while authenticated', () => {
       const authStore = useAuthStore()
-      authStore.setAuth('token', { id: 1, company_name: 'Tech' }, 'company')
+      authStore.setAuth(VALID_TOKEN, { id: 1, company_name: 'Tech' }, 'company')
 
       expect(authStore.role).toBe('company')
       // Mock: Accessing /register should redirect to /company/dashboard
@@ -257,7 +269,7 @@ describe('Router Navigation Guards', () => {
 
     it('redirects coordinator to /coordinator/dashboard when accessing /login while authenticated', () => {
       const authStore = useAuthStore()
-      authStore.setAuth('token', { id: 1, name: 'Admin' }, 'coordinator')
+      authStore.setAuth(VALID_TOKEN, { id: 1, name: 'Admin' }, 'coordinator')
 
       expect(authStore.role).toBe('coordinator')
       // Mock: Accessing /login should redirect to /coordinator/dashboard
@@ -265,7 +277,7 @@ describe('Router Navigation Guards', () => {
 
     it('redirects student trying to access company route to /student/dashboard', () => {
       const authStore = useAuthStore()
-      authStore.setAuth('token', { id: 1, full_name: 'John' }, 'student')
+      authStore.setAuth(VALID_TOKEN, { id: 1, full_name: 'John' }, 'student')
 
       expect(authStore.role).toBe('student')
       // Mock: Accessing /company/dashboard should redirect to /student/dashboard
@@ -273,7 +285,7 @@ describe('Router Navigation Guards', () => {
 
     it('redirects company trying to access student route to /company/dashboard', () => {
       const authStore = useAuthStore()
-      authStore.setAuth('token', { id: 1, company_name: 'Tech' }, 'company')
+      authStore.setAuth(VALID_TOKEN, { id: 1, company_name: 'Tech' }, 'company')
 
       expect(authStore.role).toBe('company')
       // Mock: Accessing /student/dashboard should redirect to /company/dashboard
@@ -281,7 +293,7 @@ describe('Router Navigation Guards', () => {
 
     it('redirects student trying to access coordinator route to /student/dashboard', () => {
       const authStore = useAuthStore()
-      authStore.setAuth('token', { id: 1, full_name: 'John' }, 'student')
+      authStore.setAuth(VALID_TOKEN, { id: 1, full_name: 'John' }, 'student')
 
       expect(authStore.role).toBe('student')
       // Mock: Accessing /coordinator/dashboard should redirect to /student/dashboard
@@ -291,9 +303,9 @@ describe('Router Navigation Guards', () => {
       const authStore = useAuthStore()
       
       // Manually set invalid state (shouldn't happen in production)
-      authStore.setAuth('token', {}, 'invalid_role')
+      expect(() => authStore.setAuth(VALID_TOKEN, {}, 'invalid_role')).toThrow('Invalid authentication session')
       
-      expect(authStore.token).toBe('token')
+      expect(authStore.token).toBeNull()
       // Mock: Unknown role should redirect to /login
     })
   })
@@ -328,16 +340,16 @@ describe('Router Navigation Guards', () => {
   describe('Token Persistence', () => {
     it('preserves token in localStorage on login', () => {
       const authStore = useAuthStore()
-      authStore.setAuth('persistent-token', { id: 1, email: 'test@example.com' }, 'student')
+      authStore.setAuth(VALID_TOKEN, { id: 1, email: 'test@example.com' }, 'student')
 
-      expect(authStore.token).toBe('persistent-token')
+      expect(authStore.token).toBe(VALID_TOKEN)
       expect(authStore.isAuthenticated).toBe(true)
       // Mock: localStorage should contain token
     })
 
     it('clears token from localStorage on logout', () => {
       const authStore = useAuthStore()
-      authStore.setAuth('token', { id: 1, email: 'test@example.com' }, 'student')
+      authStore.setAuth(VALID_TOKEN, { id: 1, email: 'test@example.com' }, 'student')
       authStore.logout()
 
       expect(authStore.token).toBeNull()
@@ -347,11 +359,11 @@ describe('Router Navigation Guards', () => {
 
     it('restores authentication from localStorage on app reload', () => {
       const authStore = useAuthStore()
-      authStore.setAuth('token', { id: 1, email: 'test@example.com' }, 'student')
+      authStore.setAuth(VALID_TOKEN, { id: 1, email: 'test@example.com' }, 'student')
 
       // Simulate app reload by reading from localStorage
       const storedAuth = authStore.token
-      expect(storedAuth).toBe('token')
+      expect(storedAuth).toBe(VALID_TOKEN)
       // Mock: New authStore instance should restore auth from localStorage
     })
   })
@@ -359,7 +371,7 @@ describe('Router Navigation Guards', () => {
   describe('Session Management', () => {
     it('maintains session across page navigation', () => {
       const authStore = useAuthStore()
-      authStore.setAuth('token', { id: 1, full_name: 'John' }, 'student')
+      authStore.setAuth(VALID_TOKEN, { id: 1, full_name: 'John' }, 'student')
 
       // Simulate navigation through routes
       expect(authStore.isAuthenticated).toBe(true)
@@ -369,7 +381,7 @@ describe('Router Navigation Guards', () => {
 
     it('invalidates session on logout', () => {
       const authStore = useAuthStore()
-      authStore.setAuth('token', { id: 1, full_name: 'John' }, 'student')
+      authStore.setAuth(VALID_TOKEN, { id: 1, full_name: 'John' }, 'student')
 
       authStore.logout()
 
@@ -382,16 +394,16 @@ describe('Router Navigation Guards', () => {
       const authStore = useAuthStore()
 
       // First user (student)
-      authStore.setAuth('student-token', { id: 1, full_name: 'John' }, 'student')
+      authStore.setAuth(VALID_TOKEN, { id: 1, full_name: 'John' }, 'student')
       expect(authStore.role).toBe('student')
 
       // Logout and login as company
       authStore.logout()
       expect(authStore.isAuthenticated).toBe(false)
 
-      authStore.setAuth('company-token', { id: 2, company_name: 'Tech' }, 'company')
+      authStore.setAuth(VALID_TOKEN, { id: 2, company_name: 'Tech' }, 'company')
       expect(authStore.role).toBe('company')
-      expect(authStore.token).toBe('company-token')
+      expect(authStore.token).toBe(VALID_TOKEN)
     })
   })
 })

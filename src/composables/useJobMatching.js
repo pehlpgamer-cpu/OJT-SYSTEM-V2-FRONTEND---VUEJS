@@ -38,7 +38,7 @@ export function useJobMatching() {
   /**
    * Fetch job postings matched to student profile
    * 
-   * WHAT: GET /student/matches with optional filters
+   * WHAT: GET /matches with optional filters
    * HOW: Query backend for postings matching student skills/preferences
    * WHY: Show student relevant job opportunities
    * 
@@ -64,7 +64,7 @@ export function useJobMatching() {
     try {
       // BUILD QUERY STRING: Convert params object to URL query string
       const qs = new URLSearchParams(params).toString()
-      const path = qs ? `/student/matches?${qs}` : `/student/matches`
+      const path = qs ? `/matches?${qs}` : `/matches`
       
       console.debug('[useJobMatching] Fetching matches', { path })
       

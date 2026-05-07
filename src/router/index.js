@@ -1,5 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../stores/authStore'
+import { useErrorStore } from '../stores/errorStore'
+import { apiClient } from '../utils/apiClient'
 
 /**
  * Vue Router Configuration
@@ -127,6 +129,42 @@ const router = createRouter({
   routes
 })
 
+const ROLE_ROUTE_MAP = {
+  student: '/student/dashboard',
+  company: '/company/dashboard',
+  coordinator: '/coordinator/dashboard'
+}
+
+const routeForRole = (role) => ROLE_ROUTE_MAP[role] || null
+
+async function refreshCurrentUser(authStore) {
+  const payload = await apiClient('/user', {
+    method: 'GET',
+    retries: 0,
+  })
+  const currentUser = payload?.data?.user || payload?.user
+
+  if (!currentUser) {
+    throw new Error('Current user payload missing')
+  }
+
+  authStore.setFreshUser(currentUser)
+}
+
+function redirectForRole(authStore, errorStore, next) {
+  const target = routeForRole(authStore.role)
+
+  if (!target) {
+    console.warn('[Router] Unknown role, logging out', { role: authStore.role })
+    authStore.logout()
+    errorStore.setError('Unsupported account role. Please contact support.', null, 403)
+    next('/login')
+    return
+  }
+
+  next(target)
+}
+
 /**
  * NAVIGATION GUARD: Enforce authentication and authorization
  * 
@@ -140,9 +178,10 @@ const router = createRouter({
  * - Unauthorized role: Redirect to login
  * - Missing role: Allow (for now), should maybe 404
  */
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
-  const isAuthenticated = authStore.isAuthenticated
+  const errorStore = useErrorStore()
+  let isAuthenticated = authStore.isAuthenticated
   
   console.debug('[Router] beforeEach guard', { 
     toPath: to.path, 
@@ -159,27 +198,26 @@ router.beforeEach((to, from, next) => {
     next('/login')
     return
   }
+
+  if (to.meta.requiresAuth && isAuthenticated && !authStore.hasFreshUser) {
+    try {
+      await refreshCurrentUser(authStore)
+      isAuthenticated = authStore.isAuthenticated
+    } catch (error) {
+      console.warn('[Router] Failed to refresh current user', { error: error.message })
+      authStore.logout()
+      errorStore.setError('Your session has expired. Please sign in again.', null, 401)
+      next('/login')
+      return
+    }
+  }
   
   // CASE 2: Route requires guest but user is logged in
   // Redirect to appropriate dashboard based on role
   if (to.meta.requiresGuest && isAuthenticated) {
     console.debug('[Router] Route requires guest, user authenticated, redirecting based on role')
     
-    if (authStore.role === 'student') {
-      console.debug('[Router] Redirecting student to dashboard')
-      next('/student/dashboard')
-    } else if (authStore.role === 'company') {
-      console.debug('[Router] Redirecting company to dashboard')
-      next('/company/dashboard')
-    } else if (authStore.role === 'coordinator') {
-      // FIX: Coordinator now has a route
-      console.debug('[Router] Redirecting coordinator to dashboard')
-      next('/coordinator/dashboard')
-    } else {
-      // Unknown role, logout to be safe
-      console.warn('[Router] Unknown role, redirecting to login', { role: authStore.role })
-      next('/login')
-    }
+    redirectForRole(authStore, errorStore, next)
     return
   }
   
@@ -192,10 +230,7 @@ router.beforeEach((to, from, next) => {
       path: to.path 
     })
     // Unauthorized: redirect to appropriate dashboard
-    if (authStore.role === 'student') next('/student/dashboard')
-    else if (authStore.role === 'company') next('/company/dashboard')
-    else if (authStore.role === 'coordinator') next('/coordinator/dashboard')
-    else next('/login')  // Fallback
+    redirectForRole(authStore, errorStore, next)
     return
   }
   

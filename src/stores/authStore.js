@@ -1,156 +1,196 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
-/**
- * Authentication Store (Pinia)
- * 
- * Manages global authentication state including:
- * - JWT token storage and persistence
- * - User identity and role information
- * - Authentication status tracking
- * - Local storage synchronization
- * 
- * WHY: Centralized state management allows all components and composables
- * to reference the same auth state without prop drilling. Persisting to
- * localStorage ensures users stay logged in across browser sessions.
- * 
- * HOW: Uses Pinia composition-api syntax with refs for reactivity. localStorage
- * is checked on initialization. All state updates sync to localStorage.
- */
-export const useAuthStore = defineStore('auth', () => {
-  // Check if running in browser environment (not SSR)
-  // This prevents localStorage errors during server-side rendering
-  const isClient = typeof window !== 'undefined'
-  
-  /**
-   * @type {Ref<Object|null>}
-   * Currently authenticated user object with id, email, name, etc.
-   * Set to null when user logs out
-   */
-  const user = ref(null)
-  
-  /**
-   * @type {Ref<string|null>}
-   * JWT token for API authentication
-   * Persisted in localStorage as 'ojt_jwt_token'
-   * Checked on app startup and attached to all API requests
-   * WHY stored: So users don't need to login again after page refresh
-   */
-  const token = ref(isClient ? localStorage.getItem('ojt_jwt_token') : null)
-  
-  /**
-   * @type {Ref<boolean>}
-   * Loading state during auth operations (login, register, logout)
-   * Used by components to disable buttons and show loaders during requests
-   */
-  const isLoading = ref(false)
+const TOKEN_KEY = 'ojt_jwt_token'
+const ROLE_KEY = 'ojt_user_role'
+const USER_KEY = 'ojt_user'
+const ALLOWED_ROLES = ['student', 'company', 'coordinator']
 
-  /**
-   * @type {Ref<boolean>}
-   * Derived reactive boolean - computed from token existence
-   * WHY separate: Components can subscribe to "are we logged in?" state
-   * without accessing token directly (security principle of least privilege)
-   */
-  const isAuthenticated = ref(!!token.value)
-  
-  /**
-   * @type {Ref<string|null>}
-   * User role for authorization: 'student', 'company', or 'coordinator'
-   * Used in router navigation guards to protect routes
-   * Example: student routes check if role === 'student'
-   * Persisted in localStorage as 'ojt_user_role'
-   */
-  const role = ref(isClient ? localStorage.getItem('ojt_user_role') : null)
+const isClient = typeof window !== 'undefined'
 
-  /**
-   * Set authentication data after successful login/registration
-   * 
-   * WHAT: Updates all auth-related state - token, user, role, authenticated status
-   * HOW: Synchronously sets all refs, then persists to localStorage
-   * WHY separate method: Ensures all auth state stays in sync. If components
-   *     set token directly, they might forget to set role, causing inconsistency
-   * 
-   * HOW IT WORKS:
-   * 1. Update all reactive refs (triggers Vue reactivity)
-   * 2. Persist to localStorage (survives page reload)
-   * 3. All watchers/computed properties automatically update
-   * 
-   * @param {string} newToken - JWT token from backend
-   * @param {Object} newUser - User object {id, email, name, ...}
-   * @param {string} newRole - User role: 'student', 'company', 'coordinator'
-   * @returns {void}
-   */
-  const setAuth = (newToken, newUser, newRole) => {
-    console.debug('[AuthStore] setAuth called', { 
-      userId: newUser?.id, 
-      role: newRole,
-      tokenLength: newToken?.length 
-    })
-    
-    // Update reactive refs - triggers all watchers and computed properties
-    token.value = newToken
-    user.value = newUser
-    role.value = newRole
-    isAuthenticated.value = true
-    
-    // PERSISTENCE: Sync to localStorage for session continuity
-    // Next time app loads, user will still be logged in
-    if (isClient) {
-      localStorage.setItem('ojt_jwt_token', newToken)
-      localStorage.setItem('ojt_user_role', newRole)
-      console.debug('[AuthStore] Auth data persisted to localStorage', { role: newRole })
+function decodeBase64Url(value) {
+  const normalized = value.replace(/-/g, '+').replace(/_/g, '/')
+  const padded = normalized.padEnd(normalized.length + ((4 - normalized.length % 4) % 4), '=')
+
+  if (typeof atob === 'function') {
+    return atob(padded)
+  }
+
+  return Buffer.from(padded, 'base64').toString('utf8')
+}
+
+export function decodeTokenPayload(rawToken) {
+  if (typeof rawToken !== 'string') {
+    return null
+  }
+
+  const parts = rawToken.split('.')
+  if (parts.length !== 3 || parts.some(part => !part)) {
+    return null
+  }
+
+  try {
+    return JSON.parse(decodeBase64Url(parts[1]))
+  } catch {
+    return null
+  }
+}
+
+export function isTokenUsable(rawToken) {
+  const payload = decodeTokenPayload(rawToken)
+  if (!payload) {
+    return false
+  }
+
+  if (payload.exp && payload.exp * 1000 <= Date.now()) {
+    return false
+  }
+
+  return true
+}
+
+function isAllowedRole(value) {
+  return ALLOWED_ROLES.includes(value)
+}
+
+function readJson(key) {
+  if (!isClient) {
+    return null
+  }
+
+  try {
+    const raw = localStorage.getItem(key)
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    localStorage.removeItem(key)
+    return null
+  }
+}
+
+function clearStoredAuth() {
+  if (!isClient) {
+    return
+  }
+
+  localStorage.removeItem(TOKEN_KEY)
+  localStorage.removeItem(ROLE_KEY)
+  localStorage.removeItem(USER_KEY)
+}
+
+function getInitialAuth() {
+  if (!isClient) {
+    return {
+      token: null,
+      user: null,
+      role: null
     }
   }
 
-  /**
-   * Clear authentication data on logout
-   * 
-   * WHAT: Resets all auth state to logged-out state
-   * HOW: Nullifies all refs and removes from localStorage
-   * WHY: Ensures complete logout - no residual auth state remains
-   * 
-   * ERROR HANDLING NOTE:
-   * This method is called when:
-   * 1. User clicks logout button (intentional)
-   * 2. API returns 401 Unauthorized (session expired)
-   * In both cases, we clear all state to a clean slate
-   * 
-   * @returns {void}
-   */
+  const storedToken = localStorage.getItem(TOKEN_KEY)
+  const storedUser = readJson(USER_KEY)
+  const storedRole = localStorage.getItem(ROLE_KEY) || storedUser?.role
+  const tokenPayload = decodeTokenPayload(storedToken)
+  const resolvedRole = storedUser?.role || storedRole || tokenPayload?.role
+
+  if (!isTokenUsable(storedToken) || !isAllowedRole(resolvedRole)) {
+    clearStoredAuth()
+    return {
+      token: null,
+      user: null,
+      role: null
+    }
+  }
+
+  return {
+    token: storedToken,
+    user: storedUser,
+    role: resolvedRole
+  }
+}
+
+/**
+ * Authentication Store (Pinia)
+ *
+ * Keeps local auth state aligned with a usable JWT, an allowed public app role,
+ * and the latest user payload fetched from the backend when route guards boot.
+ */
+export const useAuthStore = defineStore('auth', () => {
+  const initialAuth = getInitialAuth()
+
+  const user = ref(initialAuth.user)
+  const token = ref(initialAuth.token)
+  const isLoading = ref(false)
+  const isAuthenticated = ref(!!initialAuth.token)
+  const role = ref(initialAuth.role)
+  const hasFreshUser = ref(false)
+
+  const setAuth = (newToken, newUser, newRole = newUser?.role) => {
+    const tokenPayload = decodeTokenPayload(newToken)
+    const resolvedRole = newUser?.role || newRole || tokenPayload?.role
+
+    console.debug('[AuthStore] setAuth called', {
+      userId: newUser?.id,
+      role: resolvedRole,
+      tokenLength: newToken?.length
+    })
+
+    if (!isTokenUsable(newToken) || !isAllowedRole(resolvedRole)) {
+      logout()
+      throw new Error('Invalid authentication session')
+    }
+
+    token.value = newToken
+    user.value = newUser || null
+    role.value = resolvedRole
+    isAuthenticated.value = true
+    hasFreshUser.value = !!newUser
+
+    if (isClient) {
+      localStorage.setItem(TOKEN_KEY, newToken)
+      localStorage.setItem(ROLE_KEY, resolvedRole)
+      if (newUser) {
+        localStorage.setItem(USER_KEY, JSON.stringify(newUser))
+      } else {
+        localStorage.removeItem(USER_KEY)
+      }
+      console.debug('[AuthStore] Auth data persisted to localStorage', { role: resolvedRole })
+    }
+  }
+
+  const setFreshUser = (newUser) => {
+    if (!token.value) {
+      throw new Error('Cannot set user without token')
+    }
+
+    setAuth(token.value, newUser, newUser?.role)
+  }
+
+  const markUserStale = () => {
+    hasFreshUser.value = false
+  }
+
   const logout = () => {
     console.debug('[AuthStore] logout called')
-    
-    // Clear all auth state
+
     token.value = null
     user.value = null
     role.value = null
     isAuthenticated.value = false
-    
-    // CLEANUP: Remove from localStorage to prevent accidental reuse
-    // NOTE: If token was compromised, this deletion from client
-    // doesn't invalidate it on the server (backend should handle token expiration)
-    if (isClient) {
-      localStorage.removeItem('ojt_jwt_token')
-      localStorage.removeItem('ojt_user_role')
-      console.debug('[AuthStore] Auth data removed from localStorage')
-    }
+    hasFreshUser.value = false
+    clearStoredAuth()
+    console.debug('[AuthStore] Auth data removed from localStorage')
   }
 
-  // Store exports - make all state and methods available to components
   return {
-    /**
-     * Reactive state (read/write)
-     */
     user,
     token,
     isLoading,
     isAuthenticated,
     role,
-    
-    /**
-     * Methods (write operations)
-     */
+    hasFreshUser,
     setAuth,
+    setFreshUser,
+    markUserStale,
     logout
   }
 })

@@ -12,6 +12,21 @@ global.localStorage = localStorageMock
 
 import { useAuthStore } from '../src/stores/authStore'
 
+const createToken = (overrides = {}) => {
+  const payload = {
+    id: 1,
+    role: 'student',
+    exp: Math.floor(Date.now() / 1000) + 3600,
+    ...overrides
+  }
+
+  return [
+    'eyJhbGciOiJIUzI1NiJ9',
+    Buffer.from(JSON.stringify(payload)).toString('base64url'),
+    'signature'
+  ].join('.')
+}
+
 describe('Auth Store', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
@@ -26,20 +41,25 @@ describe('Auth Store', () => {
 
   it('sets authentication properties on login', () => {
     const store = useAuthStore()
+    const token = createToken()
     
-    store.setAuth('fake-jwt-token', { email: 'test@student.com' }, 'student')
+    store.setAuth(token, { email: 'test@student.com', role: 'student' }, 'student')
 
-    expect(store.token).toBe('fake-jwt-token')
+    expect(store.token).toBe(token)
     expect(store.user.email).toBe('test@student.com')
     expect(store.role).toBe('student')
     expect(store.isAuthenticated).toBe(true)
-    expect(localStorage.setItem).toHaveBeenCalledWith('ojt_jwt_token', 'fake-jwt-token')
+    expect(localStorage.setItem).toHaveBeenCalledWith('ojt_jwt_token', token)
+    expect(localStorage.setItem).toHaveBeenCalledWith('ojt_user', JSON.stringify({
+      email: 'test@student.com',
+      role: 'student'
+    }))
   })
 
   it('clears properties on logout', () => {
     const store = useAuthStore()
     
-    store.setAuth('fake', {}, 'student')
+    store.setAuth(createToken(), { role: 'student' }, 'student')
     store.logout()
 
     expect(store.token).toBeNull()
@@ -47,5 +67,19 @@ describe('Auth Store', () => {
     expect(store.role).toBeNull()
     expect(store.isAuthenticated).toBe(false)
     expect(localStorage.removeItem).toHaveBeenCalledWith('ojt_jwt_token')
+  })
+
+  it('rejects malformed tokens', () => {
+    const store = useAuthStore()
+
+    expect(() => store.setAuth('fake-jwt-token', { role: 'student' }, 'student')).toThrow('Invalid authentication session')
+    expect(store.isAuthenticated).toBe(false)
+  })
+
+  it('rejects expired tokens', () => {
+    const store = useAuthStore()
+
+    expect(() => store.setAuth(createToken({ exp: Math.floor(Date.now() / 1000) - 1 }), { role: 'student' }, 'student')).toThrow('Invalid authentication session')
+    expect(store.isAuthenticated).toBe(false)
   })
 })
