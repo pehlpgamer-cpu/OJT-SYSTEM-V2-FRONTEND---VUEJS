@@ -15,6 +15,29 @@ export default defineConfig({
     outDir: 'dist',
     // Disable source maps in production for smaller bundle
     sourcemap: process.env.NODE_ENV !== 'production',
+    // Code splitting for faster initial load
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor': ['vue', 'vue-router', 'pinia'],
+          'ui': ['@headlessui/vue', 'lucide-vue-next'],
+          'charts': ['chart.js', 'vue-chartjs'],
+        },
+        compact: true,
+      }
+    },
+    // JavaScript minification
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: process.env.NODE_ENV === 'production',
+        drop_debugger: true,
+      },
+    },
+    // CSS minification and code splitting
+    cssCodeSplit: true,
+    // Warn on large chunks
+    chunkSizeWarningLimit: 500,
   },
   test: {
     environment: 'jsdom',
