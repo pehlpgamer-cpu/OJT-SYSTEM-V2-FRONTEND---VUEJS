@@ -47,7 +47,7 @@ const loadProfile = async () => {
       })
     }
   } catch (err) {
-    console.error('Failed to load profile', err)
+    console.error('[ProfileEdit] Failed to load profile:', err.message)
   }
 }
 
@@ -77,7 +77,7 @@ const handleSubmit = async () => {
       validationErrors.value = formattedErrors
     } else {
       // API error already in errorStore, just log for debugging
-      console.error('Profile update failed', err.message)
+      console.error('[ProfileEdit] Update failed:', err.message)
     }
   }
 }

@@ -105,7 +105,7 @@ export function useAuth() {
       // This persists to localStorage and makes it available to all components
       authStore.setAuth(payload.token, payload.user, payload.user.role)
       
-      console.log('[useAuth] User authenticated and stored', { role: payload.user.role })
+      console.debug('[useAuth] User authenticated and stored', { role: payload.user.role })
       
       // ROLE-BASED NAVIGATION: Route to correct dashboard
       await navigateForRole(payload.user.role)
@@ -164,7 +164,7 @@ export function useAuth() {
         body: JSON.stringify(userData),
       })
       
-      console.log('[useAuth] Registration successful, redirecting to login')
+      console.debug('[useAuth] Registration successful, redirecting to login')
       
       // REDIRECT: Send to login page (user will login with their new credentials)
       // This is not auto-login - user must verify password works
@@ -200,7 +200,7 @@ export function useAuth() {
     
     // CLEANUP: Remove all auth data from store and localStorage
     authStore.logout()
-    console.log('[useAuth] User logged out')
+    console.debug('[useAuth] User logged out')
     
     // REDIRECT: Send to login page
     await router.push('/login')

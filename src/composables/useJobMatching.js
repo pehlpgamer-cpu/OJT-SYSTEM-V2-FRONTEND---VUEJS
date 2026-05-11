@@ -132,7 +132,7 @@ export function useJobMatching() {
         body: JSON.stringify({ postingId, ...applicationData })
       })
       
-      console.log('[useJobMatching] Application submitted successfully', { 
+      console.debug('[useJobMatching] Application submitted successfully', { 
         applicationId: result.id || result.application?.id 
       })
       
