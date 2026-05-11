@@ -18,12 +18,19 @@ export default defineConfig({
     // Code splitting for faster initial load
     rollupOptions: {
       output: {
-        manualChunks: {
-          'vendor': ['vue', 'vue-router', 'pinia'],
-          'ui': ['@headlessui/vue', 'lucide-vue-next'],
-          'charts': ['chart.js', 'vue-chartjs'],
-        },
-        compact: true,
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('vue') || id.includes('vue-router') || id.includes('pinia')) {
+              return 'vendor'
+            }
+            if (id.includes('@headlessui') || id.includes('lucide-vue-next')) {
+              return 'ui'
+            }
+            if (id.includes('chart.js') || id.includes('vue-chartjs')) {
+              return 'charts'
+            }
+          }
+        }
       }
     },
     // JavaScript minification
