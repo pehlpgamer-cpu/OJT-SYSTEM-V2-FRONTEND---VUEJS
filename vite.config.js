@@ -33,14 +33,6 @@ export default defineConfig({
         }
       }
     },
-    // JavaScript minification
-    minify: 'terser',
-    terserOptions: {
-      compress: {
-        drop_console: process.env.NODE_ENV === 'production',
-        drop_debugger: true,
-      },
-    },
     // CSS minification and code splitting
     cssCodeSplit: true,
     // Warn on large chunks
