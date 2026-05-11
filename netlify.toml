@@ -118,9 +118,10 @@ Referrer-Policy = "strict-origin-when-cross-origin"
 
 # Content Security Policy: Restrict which resources can be loaded
 # default-src 'self' = Only allow resources from same origin
+# script-src 'unsafe-eval' = Required for Zod schema validation & browser extensions
 # connect-src allows API calls through same-origin Netlify proxy
 # img-src allows external images (company logos, etc.)
-Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://ojt-system-v2-backend-nodejs.vercel.app; img-src 'self' data: https:; font-src 'self' data:;"
+Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://ojt-system-v2-backend-nodejs.vercel.app; img-src 'self' data: https:; font-src 'self' data:;"
 
 # ============================================================================
 # CACHE CONTROL: Asset Fingerprinting
