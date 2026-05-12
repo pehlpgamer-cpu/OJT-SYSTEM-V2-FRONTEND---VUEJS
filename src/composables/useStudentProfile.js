@@ -2,6 +2,21 @@ import { ref } from 'vue'
 import { apiClient } from '../utils/apiClient'
 import { useStudentStore } from '../stores/studentStore'
 
+export const normalizeStudentProfileResponse = (payload) => {
+  if (!payload) return null
+  return payload.profile || payload.student || payload.data?.profile || payload.data?.student || payload.data || payload
+}
+
+export const normalizeSkillsResponse = (payload) => {
+  if (Array.isArray(payload)) return payload
+  return payload?.skills || payload?.data?.skills || payload?.data || []
+}
+
+export const normalizeSkillResponse = (payload) => {
+  if (!payload) return null
+  return payload.skill || payload.data?.skill || payload.data || payload
+}
+
 export function useStudentProfile() {
   const store = useStudentStore()
   const isLoading = ref(false)
@@ -10,8 +25,9 @@ export function useStudentProfile() {
     isLoading.value = true
     try {
       const data = await apiClient('/students/profile', { method: 'GET' })
-      store.setProfile(data.profile || data.data || data)
-      return data
+      const profile = normalizeStudentProfileResponse(data)
+      store.setProfile(profile)
+      return profile
     } finally {
       isLoading.value = false
     }
@@ -24,8 +40,9 @@ export function useStudentProfile() {
         method: 'PUT',
         body: JSON.stringify(profileData)
       })
-      store.setProfile(data.profile || data.data || data)
-      return data
+      const profile = normalizeStudentProfileResponse(data)
+      store.setProfile(profile)
+      return profile
     } finally {
       isLoading.value = false
     }
@@ -35,8 +52,9 @@ export function useStudentProfile() {
     isLoading.value = true
     try {
       const data = await apiClient('/students/skills', { method: 'GET' })
-      store.setSkills(data.skills || data.data || data)
-      return data
+      const skills = normalizeSkillsResponse(data)
+      store.setSkills(skills)
+      return skills
     } finally {
       isLoading.value = false
     }
@@ -49,8 +67,9 @@ export function useStudentProfile() {
         method: 'POST',
         body: JSON.stringify(skillData)
       })
-      store.addSkill(data.skill || data.data || data)
-      return data
+      const skill = normalizeSkillResponse(data)
+      store.addSkill(skill)
+      return skill
     } finally {
       isLoading.value = false
     }
@@ -63,8 +82,9 @@ export function useStudentProfile() {
         method: 'PUT',
         body: JSON.stringify(skillData)
       })
-      store.updateSkill(data.skill || data.data || data) // assuming API returns updated skill
-      return data
+      const skill = normalizeSkillResponse(data)
+      store.updateSkill(skill)
+      return skill
     } finally {
       isLoading.value = false
     }

@@ -1,13 +1,19 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { storeToRefs } from 'pinia'
 import { useStudentProfile } from '../../composables/useStudentProfile'
+import { useStudentStore } from '../../stores/studentStore'
 import { useErrorStore } from '../../stores/errorStore'
+import { useUiStore } from '../../stores/uiStore'
 import { z } from 'zod'
 
 const router = useRouter()
 const errorStore = useErrorStore()
-const { fetchProfile, updateProfile, isLoading } = useStudentProfile()
+const uiStore = useUiStore()
+const studentStore = useStudentStore()
+const { skills } = storeToRefs(studentStore)
+const { fetchProfile, updateProfile, fetchSkills, addSkill, deleteSkill, isLoading } = useStudentProfile()
 
 // Basic profile mapping keys
 const formData = ref({
@@ -23,6 +29,12 @@ const formData = ref({
 })
 
 const validationErrors = ref({})
+const skillForm = ref({
+  skill_name: '',
+  proficiency_level: 'beginner',
+  years_of_experience: ''
+})
+const skillErrors = ref({})
 
 const profileSchema = z.object({
   first_name: z.string().min(1, 'First name is required'),
@@ -36,13 +48,26 @@ const profileSchema = z.object({
   academic_program: z.string().optional()
 })
 
+const skillSchema = z.object({
+  skill_name: z.string().trim().min(2, 'Skill name must be at least 2 characters'),
+  proficiency_level: z.enum(['beginner', 'intermediate', 'advanced', 'expert']),
+  years_of_experience: z.union([
+    z.literal('').transform(() => undefined),
+    z.coerce.number().int().min(0, 'Years must be 0 or higher').max(50, 'Years must be 50 or less')
+  ]).optional()
+})
+
 const loadProfile = async () => {
   try {
-    const data = await fetchProfile()
-    if (data) {
+    const [profileData] = await Promise.all([
+      fetchProfile(),
+      fetchSkills()
+    ])
+
+    if (profileData) {
       Object.keys(formData.value).forEach(key => {
-        if (data[key] !== undefined && data[key] !== null) {
-          formData.value[key] = data[key]
+        if (profileData[key] !== undefined && profileData[key] !== null) {
+          formData.value[key] = profileData[key]
         }
       })
     }
@@ -62,9 +87,8 @@ const handleSubmit = async () => {
   try {
     const validData = profileSchema.parse(formData.value)
     await updateProfile(validData)
-    // Success: show feedback and redirect
     errorStore.clearError()
-    // Brief delay to allow user to see success message if added
+    uiStore.showSuccess('Student profile saved.')
     setTimeout(() => {
       router.push('/student/dashboard')
     }, 500)
@@ -81,11 +105,55 @@ const handleSubmit = async () => {
     }
   }
 }
+
+const handleAddSkill = async () => {
+  skillErrors.value = {}
+  errorStore.clearError()
+
+  try {
+    const validSkill = skillSchema.parse(skillForm.value)
+    await addSkill(validSkill)
+    uiStore.showSuccess('Skill added.')
+    skillForm.value = {
+      skill_name: '',
+      proficiency_level: 'beginner',
+      years_of_experience: ''
+    }
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      const formattedErrors = {}
+      err.issues.forEach(e => {
+        formattedErrors[e.path[0]] = e.message
+      })
+      skillErrors.value = formattedErrors
+    } else {
+      console.error('[ProfileEdit] Add skill failed:', err.message)
+    }
+  }
+}
+
+const handleDeleteSkill = async (skill) => {
+  const confirmed = await uiStore.confirmAction({
+    title: 'Remove skill',
+    message: `Remove ${skill.skill_name || skill.name || 'this skill'} from your profile?`,
+    confirmLabel: 'Remove',
+    tone: 'danger'
+  })
+
+  if (!confirmed) return
+
+  try {
+    await deleteSkill(skill.id)
+    uiStore.showSuccess('Skill removed.')
+  } catch (err) {
+    console.error('[ProfileEdit] Delete skill failed:', err.message)
+  }
+}
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-    <div class="max-w-3xl mx-auto text-gray-900 bg-white rounded-lg shadow p-8">
+  <div class="py-8 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-5xl mx-auto text-gray-900 bg-white rounded-lg shadow p-6 sm:p-8">
       <div class="flex justify-between items-center mb-6">
         <h1 class="text-2xl font-bold text-gray-900">Edit Your Profile</h1>
         <router-link to="/student/dashboard" class="text-sm font-medium text-indigo-600 hover:text-indigo-500">
@@ -230,6 +298,92 @@ const handleSubmit = async () => {
           </div>
         </div>
       </form>
+
+      <section class="mt-10 border-t border-gray-200 pt-8">
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h2 class="text-xl font-bold text-gray-900">Skills</h2>
+            <p class="text-sm text-gray-500">Skills improve match quality and profile completeness.</p>
+          </div>
+        </div>
+
+        <form class="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-[1fr_180px_140px_auto]" @submit.prevent="handleAddSkill">
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Skill name</label>
+            <input
+              v-model="skillForm.skill_name"
+              type="text"
+              placeholder="e.g., JavaScript"
+              class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+              :class="{'border-red-300': skillErrors.skill_name}"
+            />
+            <span v-if="skillErrors.skill_name" class="text-red-500 text-xs mt-1">{{ skillErrors.skill_name }}</span>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Level</label>
+            <select
+              v-model="skillForm.proficiency_level"
+              class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+            >
+              <option value="beginner">Beginner</option>
+              <option value="intermediate">Intermediate</option>
+              <option value="advanced">Advanced</option>
+              <option value="expert">Expert</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Years</label>
+            <input
+              v-model="skillForm.years_of_experience"
+              type="number"
+              min="0"
+              max="50"
+              class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+              :class="{'border-red-300': skillErrors.years_of_experience}"
+            />
+            <span v-if="skillErrors.years_of_experience" class="text-red-500 text-xs mt-1">{{ skillErrors.years_of_experience }}</span>
+          </div>
+
+          <button
+            type="submit"
+            :disabled="isLoading"
+            class="self-end rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+          >
+            Add
+          </button>
+        </form>
+
+        <div v-if="skills.length > 0" class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div
+            v-for="skill in skills"
+            :key="skill.id"
+            class="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-4 py-3"
+          >
+            <div>
+              <p class="font-medium text-gray-900">{{ skill.skill_name || skill.name }}</p>
+              <p class="text-xs capitalize text-gray-500">
+                {{ skill.proficiency_level || skill.proficiency }}
+                <span v-if="skill.years_of_experience !== undefined && skill.years_of_experience !== null">
+                  &bull; {{ skill.years_of_experience }} year{{ Number(skill.years_of_experience) === 1 ? '' : 's' }}
+                </span>
+              </p>
+            </div>
+            <button
+              type="button"
+              class="rounded-md px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500"
+              @click="handleDeleteSkill(skill)"
+            >
+              Remove
+            </button>
+          </div>
+        </div>
+
+        <div v-else class="mt-6 rounded-lg border border-dashed border-gray-300 bg-gray-50 p-6 text-center text-sm text-gray-500">
+          No skills added yet.
+        </div>
+      </section>
     </div>
   </div>
 </template>

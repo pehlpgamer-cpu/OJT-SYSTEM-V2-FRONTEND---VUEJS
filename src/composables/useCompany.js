@@ -2,6 +2,35 @@ import { ref } from 'vue'
 import { apiClient } from '../utils/apiClient'
 import { useCompanyStore } from '../stores/companyStore'
 
+export const normalizeCompanyProfileResponse = (payload) => {
+  if (!payload) return null
+  return payload.profile || payload.company || payload.data?.profile || payload.data?.company || payload.data || payload
+}
+
+export const normalizePostingsResponse = (payload) => {
+  const rawPostings = Array.isArray(payload)
+    ? payload
+    : (payload?.postings || payload?.data?.postings || payload?.data || [])
+
+  return rawPostings.map(posting => ({
+    ...posting,
+    status: posting.status || posting.posting_status || 'active',
+    posting_status: posting.posting_status || posting.status || 'active'
+  }))
+}
+
+export const normalizePostingResponse = (payload) => {
+  const posting = payload?.posting || payload?.data?.posting || payload?.data || payload
+
+  if (!posting) return null
+
+  return {
+    ...posting,
+    status: posting.status || posting.posting_status || 'active',
+    posting_status: posting.posting_status || posting.status || 'active'
+  }
+}
+
 /**
  * Company Management Composable
  * 
@@ -96,8 +125,9 @@ export function useCompany() {
       console.debug('[useCompany] Profile fetched successfully', { companyId: data.id })
       
       // NORMALIZATION: Handle both response formats
-      store.setProfile(data.profile || data)
-      return data
+      const profile = normalizeCompanyProfileResponse(data)
+      store.setProfile(profile)
+      return profile
     } catch (error) {
       console.error('[useCompany] fetchProfile failed', { 
         error: error.message, 
@@ -138,8 +168,9 @@ export function useCompany() {
       })
       console.debug('[useCompany] Profile updated successfully')
       
-      store.setProfile(data.profile || data)
-      return data
+      const profile = normalizeCompanyProfileResponse(data)
+      store.setProfile(profile)
+      return profile
     } catch (error) {
       console.error('[useCompany] updateProfile failed', { 
         error: error.message,
@@ -185,10 +216,11 @@ export function useCompany() {
       
       // STORE UPDATE: Prepend new posting to list (newest first)
       // This ensures UI shows new posting immediately without refetch
+      const posting = normalizePostingResponse(data)
       if (Array.isArray(store.postings)) {
-        store.setPostings([data.posting || data, ...store.postings])
+        store.setPostings([posting, ...store.postings])
       }
-      return data
+      return posting
     } catch (error) {
       console.error('[useCompany] createPosting failed', { 
         error: error.message,
@@ -227,9 +259,7 @@ export function useCompany() {
       console.debug('[useCompany] Postings fetched successfully', { count: Array.isArray(data) ? data.length : data.postings?.length || data.data?.length })
       
       // NORMALIZATION: Handle various response formats from backend
-      const postingsArray = Array.isArray(data) 
-        ? data 
-        : (data.postings || data.data || [])
+      const postingsArray = normalizePostingsResponse(data)
       
       store.setPostings(postingsArray)
       return postingsArray
@@ -274,14 +304,15 @@ export function useCompany() {
       // STORE SYNC: Update posting in array
       // Find posting by ID and replace with updated version
       const updatedIndex = store.postings.findIndex(p => p.id === postingId)
+      const updatedPosting = normalizePostingResponse(data)
       if (updatedIndex !== -1) {
-        store.postings[updatedIndex] = data.posting || data
+        store.postings[updatedIndex] = updatedPosting
         console.debug('[useCompany] Store updated with new posting status', { postingId })
       } else {
         console.warn('[useCompany] Posting not found in store', { postingId })
       }
       
-      return data
+      return updatedPosting
     } catch (error) {
       console.error('[useCompany] updatePostingStatus failed', { 
         error: error.message,

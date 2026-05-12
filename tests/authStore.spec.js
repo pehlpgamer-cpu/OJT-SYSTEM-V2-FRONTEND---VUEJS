@@ -69,6 +69,20 @@ describe('Auth Store', () => {
     expect(localStorage.removeItem).toHaveBeenCalledWith('ojt_jwt_token')
   })
 
+  it('updates refreshed token and user separately', () => {
+    const store = useAuthStore()
+    const oldToken = createToken({ exp: Math.floor(Date.now() / 1000) + 1800 })
+    const newToken = createToken({ exp: Math.floor(Date.now() / 1000) + 7200 })
+
+    store.setAuth(oldToken, { id: 1, email: 'old@student.com', role: 'student' }, 'student')
+    store.setToken(newToken)
+    store.setUser({ id: 1, email: 'fresh@student.com', role: 'student' })
+
+    expect(store.token).toBe(newToken)
+    expect(store.user.email).toBe('fresh@student.com')
+    expect(store.isAuthenticated).toBe(true)
+  })
+
   it('rejects malformed tokens', () => {
     const store = useAuthStore()
 

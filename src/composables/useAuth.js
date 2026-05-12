@@ -2,6 +2,7 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/authStore'
 import { useErrorStore } from '../stores/errorStore'
+import { useUiStore } from '../stores/uiStore'
 import { apiClient } from '../utils/apiClient'
 
 const ROLE_ROUTE_MAP = {
@@ -36,6 +37,7 @@ const ROLE_ROUTE_MAP = {
 export function useAuth() {
   const authStore = useAuthStore()
   const errorStore = useErrorStore()
+  const uiStore = useUiStore()
   const router = useRouter()
   
   /**
@@ -165,6 +167,7 @@ export function useAuth() {
       })
       
       console.debug('[useAuth] Registration successful, redirecting to login')
+      uiStore.showSuccess('Account created. Sign in with your new credentials.')
       
       // REDIRECT: Send to login page (user will login with their new credentials)
       // This is not auto-login - user must verify password works
@@ -201,6 +204,7 @@ export function useAuth() {
     // CLEANUP: Remove all auth data from store and localStorage
     authStore.logout()
     console.debug('[useAuth] User logged out')
+    uiStore.showSuccess('You have been signed out.')
     
     // REDIRECT: Send to login page
     await router.push('/login')

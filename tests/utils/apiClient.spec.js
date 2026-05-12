@@ -1,7 +1,23 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { apiClient } from '../../src/utils/apiClient'
+import { useAuthStore } from '../../src/stores/authStore'
 import { useErrorStore } from '../../src/stores/errorStore'
+
+const createToken = (overrides = {}) => {
+  const payload = {
+    id: 1,
+    role: 'student',
+    exp: Math.floor(Date.now() / 1000) + 3600,
+    ...overrides
+  }
+
+  return [
+    'eyJhbGciOiJIUzI1NiJ9',
+    Buffer.from(JSON.stringify(payload)).toString('base64url'),
+    'signature'
+  ].join('.')
+}
 
 describe('apiClient', () => {
   beforeEach(() => {
@@ -103,5 +119,47 @@ describe('apiClient', () => {
     })).rejects.toThrow('Network error')
 
     expect(global.fetch).toHaveBeenCalledTimes(1)
+  })
+
+  it('refreshes near-expiry tokens and uses the refreshed token on the request', async () => {
+    const authStore = useAuthStore()
+    const oldToken = createToken({ exp: Math.floor(Date.now() / 1000) + 1800 })
+    const newToken = createToken({ exp: Math.floor(Date.now() / 1000) + 7200 })
+
+    authStore.setAuth(oldToken, { id: 1, email: 'student@example.com', role: 'student' }, 'student')
+
+    global.fetch
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({
+          token: newToken,
+          user: { id: 1, email: 'student@example.com', role: 'student' }
+        })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({ ok: true })
+      })
+
+    await apiClient('/health', { retries: 0 })
+
+    expect(global.fetch).toHaveBeenNthCalledWith(
+      1,
+      'http://localhost:5000/api/auth/refresh',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({ Authorization: `Bearer ${oldToken}` })
+      })
+    )
+    expect(global.fetch).toHaveBeenNthCalledWith(
+      2,
+      'http://localhost:5000/api/health',
+      expect.objectContaining({
+        headers: expect.objectContaining({ Authorization: `Bearer ${newToken}` })
+      })
+    )
+    expect(authStore.token).toBe(newToken)
   })
 })

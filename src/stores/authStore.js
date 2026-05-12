@@ -165,6 +165,20 @@ export const useAuthStore = defineStore('auth', () => {
     setAuth(token.value, newUser, newUser?.role)
   }
 
+  const setToken = (newToken) => {
+    const tokenPayload = decodeTokenPayload(newToken)
+    const resolvedRole = user.value?.role || role.value || tokenPayload?.role
+    setAuth(newToken, user.value, resolvedRole)
+  }
+
+  const setUser = (newUser) => {
+    if (!token.value) {
+      throw new Error('Cannot set user without token')
+    }
+
+    setAuth(token.value, newUser, newUser?.role || role.value)
+  }
+
   const markUserStale = () => {
     hasFreshUser.value = false
   }
@@ -190,6 +204,8 @@ export const useAuthStore = defineStore('auth', () => {
     hasFreshUser,
     setAuth,
     setFreshUser,
+    setToken,
+    setUser,
     markUserStale,
     logout
   }

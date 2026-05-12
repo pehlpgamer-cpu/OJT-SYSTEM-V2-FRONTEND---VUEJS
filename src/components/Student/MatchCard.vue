@@ -1,5 +1,5 @@
 <script setup>
-import { defineProps, computed } from 'vue'
+import { defineProps, defineEmits, computed } from 'vue'
 
 const props = defineProps({
   match: {
@@ -8,8 +8,11 @@ const props = defineProps({
   }
 })
 
+defineEmits(['view-apply'])
+
 const ojtPosting = computed(() => props.match.OjtPosting || {})
 const company = computed(() => ojtPosting.value.Company || {})
+const postingDuration = computed(() => ojtPosting.value.duration_weeks ? `${ojtPosting.value.duration_weeks} weeks` : 'Duration unspecified')
 
 const matchStatusConfig = computed(() => {
   const score = props.match.overall_score || 0
@@ -71,16 +74,16 @@ const matchStatusConfig = computed(() => {
           <div class="bg-indigo-300 h-full" :style="{ width: `${match.gpa_score || 0}%` }" title="GPA"></div>
           <div class="bg-indigo-200 h-full" :style="{ width: `${match.program_score || 0}%` }" title="Program"></div>
         </div>
-        <span class="w-8 text-right font-semibold text-gray-700">{{ Math.round((match.gpa_score || 0) + (match.program_score || 0)) }}%</span>
+        <span class="w-8 text-right font-semibold text-gray-700">{{ Math.round((match.gpa_score || 0) + (match.academic_program_score || match.program_score || 0)) }}%</span>
       </div>
     </div>
 
     <div class="flex justify-between items-center mt-auto pt-4 border-t border-gray-100">
       <span class="text-sm font-medium text-gray-500">
-        {{ ojtPosting.duration_weeks ? `${ojtPosting.duration_weeks} weeks` : 'Duration unspecified' }}
+        {{ postingDuration }}
       </span>
       <button 
-        @click="$emit('apply', match.id)"
+        @click="$emit('view-apply', match)"
         class="inline-flex justify-center px-4 py-2 text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
       >
         View & Apply

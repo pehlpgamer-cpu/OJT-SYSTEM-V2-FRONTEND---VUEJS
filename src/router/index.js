@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../stores/authStore'
 import { useErrorStore } from '../stores/errorStore'
 import { apiClient } from '../utils/apiClient'
+import AppShell from '../components/AppShell.vue'
 
 /**
  * Vue Router Configuration
@@ -31,34 +32,42 @@ const routes = [
     path: '/login',
     name: 'Login',
     component: () => import('../views/Auth/LoginPage.vue'),
-    meta: { requiresGuest: true }  // Logged-in users redirected away
+    meta: { requiresGuest: true, title: 'Sign in' }  // Logged-in users redirected away
   },
   {
     path: '/register',
     name: 'Register',
     component: () => import('../views/Auth/RegisterPage.vue'),
-    meta: { requiresGuest: true }  // Logged-in users redirected away
+    meta: { requiresGuest: true, title: 'Register' }  // Logged-in users redirected away
   },
   
   // STUDENT ROUTES
   {
     path: '/student',
+    component: AppShell,
     meta: { requiresAuth: true, role: 'student' },  // Only accessible if role === 'student'
     children: [
       {
+        path: '',
+        redirect: '/student/dashboard'
+      },
+      {
         path: 'dashboard',
         name: 'StudentDashboard',
-        component: () => import('../views/Student/StudentDashboard.vue')
+        component: () => import('../views/Student/StudentDashboard.vue'),
+        meta: { title: 'Student Dashboard' }
       },
       {
         path: 'profile/edit',
         name: 'ProfileEdit',
-        component: () => import('../views/Student/ProfileEdit.vue')
+        component: () => import('../views/Student/ProfileEdit.vue'),
+        meta: { title: 'Student Profile' }
       },
       {
         path: 'matches',
         name: 'Matches',
-        component: () => import('../views/Student/MatchesPage.vue')
+        component: () => import('../views/Student/MatchesPage.vue'),
+        meta: { title: 'Job Matches' }
       }
     ]
   },
@@ -66,32 +75,42 @@ const routes = [
   // COMPANY ROUTES
   {
     path: '/company',
+    component: AppShell,
     meta: { requiresAuth: true, role: 'company' },  // Only accessible if role === 'company'
     children: [
       {
+        path: '',
+        redirect: '/company/dashboard'
+      },
+      {
         path: 'dashboard',
         name: 'CompanyDashboard',
-        component: () => import('../views/Company/CompanyDashboard.vue')
+        component: () => import('../views/Company/CompanyDashboard.vue'),
+        meta: { title: 'Company Dashboard' }
       },
       {
         path: 'profile/edit',
         name: 'CompanyProfileEdit',
-        component: () => import('../views/Company/ProfileEdit.vue')
+        component: () => import('../views/Company/ProfileEdit.vue'),
+        meta: { title: 'Company Profile' }
       },
       {
         path: 'postings',
         name: 'CompanyPostings',
-        component: () => import('../views/Company/PostingsList.vue')
+        component: () => import('../views/Company/PostingsList.vue'),
+        meta: { title: 'Job Postings' }
       },
       {
         path: 'postings/new',
         name: 'PostingCreate',
-        component: () => import('../views/Company/PostingCreate.vue')
+        component: () => import('../views/Company/PostingCreate.vue'),
+        meta: { title: 'New Posting' }
       },
       {
         path: 'postings/:id/applications',
         name: 'ApplicationsReview',
-        component: () => import('../views/Company/ApplicationsReview.vue')
+        component: () => import('../views/Company/ApplicationsReview.vue'),
+        meta: { title: 'Review Applications' }
       }
     ]
   },
@@ -106,21 +125,34 @@ const routes = [
    */
   {
     path: '/coordinator',
+    component: AppShell,
     meta: { requiresAuth: true, role: 'coordinator' },
     children: [
       {
+        path: '',
+        redirect: '/coordinator/dashboard'
+      },
+      {
         path: 'dashboard',
         name: 'CoordinatorDashboard',
-        component: () => import('../views/Coordinator/Dashboard.vue')
+        component: () => import('../views/Coordinator/Dashboard.vue'),
+        meta: { title: 'Coordinator Dashboard' }
       }
     ]
+  },
+  {
+    path: '/unauthorized',
+    name: 'Unauthorized',
+    component: () => import('../views/System/Unauthorized.vue'),
+    meta: { requiresAuth: true, title: 'Access Denied' }
   },
   
   // 404 - Not Found
   {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
-    component: () => import('../views/Auth/LoginPage.vue')  // Redirect to login
+    component: () => import('../views/System/NotFound.vue'),
+    meta: { title: 'Page Not Found' }
   }
 ]
 
@@ -229,8 +261,8 @@ router.beforeEach(async (to, from, next) => {
       userRole: authStore.role,
       path: to.path 
     })
-    // Unauthorized: redirect to appropriate dashboard
-    redirectForRole(authStore, errorStore, next)
+    errorStore.setError('You do not have access to that account area.', null, 403)
+    next('/unauthorized')
     return
   }
   

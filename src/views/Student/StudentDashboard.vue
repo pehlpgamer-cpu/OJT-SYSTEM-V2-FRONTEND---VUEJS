@@ -3,18 +3,26 @@ import { onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useStudentStore } from '../../stores/studentStore'
 import { useStudentProfile } from '../../composables/useStudentProfile'
+import { useErrorStore } from '../../stores/errorStore'
 
-const { fetchProfile, isLoading } = useStudentProfile()
+const { fetchProfile, fetchSkills, isLoading } = useStudentProfile()
 const studentStore = useStudentStore()
-const { profileCompleteness, isProfileComplete, profile } = storeToRefs(studentStore)
+const errorStore = useErrorStore()
+const { profileCompleteness, isProfileComplete, profile, skills } = storeToRefs(studentStore)
 
-onMounted(() => {
-  fetchProfile()
+onMounted(async () => {
+  errorStore.clearError()
+
+  try {
+    await Promise.all([fetchProfile(), fetchSkills()])
+  } catch (error) {
+    console.error('[StudentDashboard] Failed to load student data', { error: error.message })
+  }
 })
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-100 p-8">
+  <div class="p-4 sm:p-6 lg:p-8">
     <div class="max-w-7xl mx-auto space-y-6">
       <!-- Welcome Header -->
       <div class="bg-white rounded-lg shadow p-6 border-l-4 border-indigo-500">
@@ -59,8 +67,11 @@ onMounted(() => {
         <!-- Next Action Card -->
         <div class="bg-white rounded-lg shadow p-6 md:col-span-2 flex flex-col justify-center">
           <h2 class="text-xl font-bold text-gray-900 mb-2">Next Steps</h2>
-          <p class="text-gray-600 mb-6">
+          <p v-if="skills.length === 0" class="text-gray-600 mb-6">
             Ensure you've added your core skills to maximize your match scores with companies.
+          </p>
+          <p v-else class="text-gray-600 mb-6">
+            You have {{ skills.length }} skill{{ skills.length === 1 ? '' : 's' }} on your profile. Keep them current before applying.
           </p>
           
           <div class="flex flex-wrap gap-4">
@@ -69,6 +80,12 @@ onMounted(() => {
               class="inline-flex justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
             >
               View Job Matches
+            </router-link>
+            <router-link
+              to="/student/profile/edit"
+              class="inline-flex justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            >
+              Manage Skills
             </router-link>
           </div>
         </div>

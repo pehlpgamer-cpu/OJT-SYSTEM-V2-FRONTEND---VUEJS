@@ -3,10 +3,12 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCompany } from '../../composables/useCompany'
 import { useErrorStore } from '../../stores/errorStore'
+import { useUiStore } from '../../stores/uiStore'
 import { z } from 'zod'
 
 const router = useRouter()
 const errorStore = useErrorStore()
+const uiStore = useUiStore()
 const { fetchProfile, updateProfile, isLoading } = useCompany()
 
 const formData = ref({
@@ -34,8 +36,14 @@ const loadProfile = async () => {
     const data = await fetchProfile()
     if (data) {
       Object.keys(formData.value).forEach(key => {
-        if (data[key] !== undefined && data[key] !== null) {
-          formData.value[key] = data[key]
+        const aliases = {
+          industry: 'industry_type',
+          website: 'company_website',
+          logo: 'logo_url'
+        }
+        const sourceKey = aliases[key] || key
+        if (data[sourceKey] !== undefined && data[sourceKey] !== null) {
+          formData.value[key] = data[sourceKey]
         }
       })
     }
@@ -61,7 +69,7 @@ const handleSubmit = async () => {
     if (!payload.logo) delete payload.logo
 
     await updateProfile(payload)
-    alert("Company Details updated successfully!")
+    uiStore.showSuccess('Company profile saved.')
     router.push('/company/dashboard')
   } catch (err) {
     if (err instanceof z.ZodError) {
@@ -78,7 +86,7 @@ const handleSubmit = async () => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+  <div class="py-8 px-4 sm:px-6 lg:px-8">
     <div class="max-w-3xl mx-auto text-gray-900 bg-white rounded-lg shadow p-8">
       <div class="flex justify-between items-center mb-6">
         <h1 class="text-2xl font-bold text-gray-900">Edit Company Profile</h1>

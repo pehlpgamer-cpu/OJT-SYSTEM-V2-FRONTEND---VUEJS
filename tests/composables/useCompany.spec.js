@@ -4,6 +4,10 @@ import { setActivePinia, createPinia } from 'pinia'
 global.fetch = vi.fn()
 
 import { useCompany } from '../../src/composables/useCompany'
+import {
+  normalizeCompanyProfileResponse,
+  normalizePostingsResponse
+} from '../../src/composables/useCompany'
 import { useCompanyStore } from '../../src/stores/companyStore'
 
 describe('useCompany Composable', () => {
@@ -54,5 +58,22 @@ describe('useCompany Composable', () => {
     // Can be reset
     actionLoading.value = null
     expect(actionLoading.value).toBeNull()
+  })
+
+  it('normalizes wrapped company profile responses to the profile object', () => {
+    const profile = { id: 3, company_name: 'Tech Corp' }
+
+    expect(normalizeCompanyProfileResponse({ profile })).toEqual(profile)
+    expect(normalizeCompanyProfileResponse({ data: { profile } })).toEqual(profile)
+    expect(normalizeCompanyProfileResponse({ data: profile })).toEqual(profile)
+  })
+
+  it('normalizes posting status aliases for UI use', () => {
+    const postings = normalizePostingsResponse({
+      data: [{ id: 1, title: 'Intern', posting_status: 'draft' }]
+    })
+
+    expect(postings[0].status).toBe('draft')
+    expect(postings[0].posting_status).toBe('draft')
   })
 })

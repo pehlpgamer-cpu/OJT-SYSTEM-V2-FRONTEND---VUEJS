@@ -4,6 +4,10 @@ import { setActivePinia, createPinia } from 'pinia'
 global.fetch = vi.fn()
 
 import { useStudentProfile } from '../../src/composables/useStudentProfile'
+import {
+  normalizeSkillsResponse,
+  normalizeStudentProfileResponse
+} from '../../src/composables/useStudentProfile'
 import { useStudentStore } from '../../src/stores/studentStore'
 
 describe('useStudentProfile Composable', () => {
@@ -38,5 +42,21 @@ describe('useStudentProfile Composable', () => {
   it('returns isLoading ref', () => {
     const { isLoading } = useStudentProfile()
     expect(typeof isLoading.value).toBe('boolean')
+  })
+
+  it('normalizes wrapped student profile responses to the profile object', () => {
+    const profile = { id: 7, first_name: 'Aki' }
+
+    expect(normalizeStudentProfileResponse({ profile })).toEqual(profile)
+    expect(normalizeStudentProfileResponse({ data: { profile } })).toEqual(profile)
+    expect(normalizeStudentProfileResponse({ data: profile })).toEqual(profile)
+  })
+
+  it('normalizes wrapped skills responses to an array', () => {
+    const skills = [{ id: 1, skill_name: 'Vue', proficiency_level: 'advanced' }]
+
+    expect(normalizeSkillsResponse({ skills })).toEqual(skills)
+    expect(normalizeSkillsResponse({ data: { skills } })).toEqual(skills)
+    expect(normalizeSkillsResponse({ data: skills })).toEqual(skills)
   })
 })

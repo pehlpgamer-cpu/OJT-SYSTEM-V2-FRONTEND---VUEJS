@@ -3,6 +3,11 @@ import { apiClient } from '../utils/apiClient'
 import { useMatchStore } from '../stores/matchStore'
 import { useErrorStore } from '../stores/errorStore'
 
+export const normalizeMatchesResponse = (payload) => {
+  if (Array.isArray(payload)) return payload
+  return payload?.matches || payload?.data?.matches || payload?.data || []
+}
+
 /**
  * Job Matching Composable
  * 
@@ -75,9 +80,7 @@ export function useJobMatching() {
       })
       
       // NORMALIZATION: Handle various response formats
-      const matchData = Array.isArray(payload) 
-        ? payload 
-        : (payload.data || payload.matches || [])
+      const matchData = normalizeMatchesResponse(payload)
       
       // CACHE: Store in match store for component access
       matchStore.setMatches(matchData)
@@ -129,7 +132,7 @@ export function useJobMatching() {
       
       const result = await apiClient('/applications', {
         method: 'POST',
-        body: JSON.stringify({ postingId, ...applicationData })
+        body: JSON.stringify({ posting_id: postingId, ...applicationData })
       })
       
       console.debug('[useJobMatching] Application submitted successfully', { 

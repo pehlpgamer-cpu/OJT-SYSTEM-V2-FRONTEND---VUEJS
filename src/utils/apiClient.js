@@ -1,23 +1,8 @@
-import { useAuthStore } from '../stores/authStore'
+import { decodeTokenPayload, useAuthStore } from '../stores/authStore'
 import { useErrorStore } from '../stores/errorStore'
 
 const IDEMPOTENT_METHODS = ['GET', 'HEAD', 'OPTIONS']
 const NEVER_RETRY_ENDPOINTS = ['/auth/login', '/auth/register', '/auth/refresh']
-
-/**
- * Decode JWT payload without verifying signature (safe on client)
- */
-function decodeTokenPayload(token) {
-  try {
-    const parts = token.split('.')
-    if (parts.length !== 3) return null
-    const payload = JSON.parse(atob(parts[1]))
-    return payload
-  } catch (error) {
-    console.warn('[API] Failed to decode token payload', error)
-    return null
-  }
-}
 
 /**
  * Refresh token if it expires within 1 hour
@@ -47,10 +32,16 @@ async function refreshTokenIfNeeded(authStore, baseURL) {
 
       if (response.ok) {
         const data = await response.json()
+        const refreshedToken = data?.token || data?.data?.token
+        const refreshedUser = data?.user || data?.data?.user || authStore.user
+
+        if (!refreshedToken) {
+          throw new Error('Refresh token payload missing')
+        }
+
         console.debug('[API] Token refreshed successfully')
-        authStore.setToken(data.token)
-        authStore.setUser(data.user)
-        return data.token
+        authStore.setAuth(refreshedToken, refreshedUser, refreshedUser?.role || authStore.role)
+        return refreshedToken
       } else {
         console.warn('[API] Token refresh returned non-ok status', { status: response.status })
         authStore.logout()

@@ -4,12 +4,14 @@ import { useRouter } from 'vue-router'
 import { useCompany } from '../../composables/useCompany'
 import { useCompanyStore } from '../../stores/companyStore'
 import { useErrorStore } from '../../stores/errorStore'
-import { PlusCircle, Search, Edit2, Archive, CheckCircle } from 'lucide-vue-next'
+import { useUiStore } from '../../stores/uiStore'
+import { PlusCircle, Search, Archive, CheckCircle } from 'lucide-vue-next'
 
 const router = useRouter()
 const { fetchPostings, updatePostingStatus, isLoading } = useCompany()
 const companyStore = useCompanyStore()
 const errorStore = useErrorStore()
+const uiStore = useUiStore()
 
 // FIX: Track per-posting loading state (was global before)
 const actionLoading = ref(null)
@@ -41,6 +43,16 @@ const getStatusColor = (status) => {
     return colorMap[status] || colorMap['closed']
 }
 
+const postingStatus = (posting) => posting.status || posting.posting_status || 'active'
+
+const formatSalary = (salaryRange) => {
+    if (!salaryRange) return ''
+    if (typeof salaryRange === 'string') return salaryRange
+    const min = salaryRange.min ? `$${salaryRange.min}` : ''
+    const max = salaryRange.max ? `$${salaryRange.max}` : ''
+    return [min, max].filter(Boolean).join(' - ')
+}
+
 const formatDate = (dateString) => {
     if (!dateString) return 'N/A'
     return new Date(dateString).toLocaleDateString()
@@ -49,19 +61,20 @@ const formatDate = (dateString) => {
 // FIX: CRITICAL - Add missing button handlers
 // Previous bug: Buttons had no @click, making them non-functional
 
-const handleEditPosting = (postingId) => {
-  console.debug('[PostingsList] handleEditPosting called', { postingId })
-  // TODO: Implement edit functionality in backend
-  // For now, just log
-}
-
 const handleTogglePostingStatus = async (postingId, currentStatus) => {
   console.debug('[PostingsList] handleTogglePostingStatus', { postingId, currentStatus })
   
   const newStatus = currentStatus === 'active' ? 'closed' : 'active'
   const actionText = newStatus === 'active' ? 'publish' : 'close'
   
-  if (!confirm(`Are you sure you want to ${actionText} this posting?`)) {
+  const confirmed = await uiStore.confirmAction({
+    title: `${actionText.charAt(0).toUpperCase() + actionText.slice(1)} posting`,
+    message: `Are you sure you want to ${actionText} this posting?`,
+    confirmLabel: actionText.charAt(0).toUpperCase() + actionText.slice(1),
+    tone: newStatus === 'active' ? 'default' : 'danger'
+  })
+
+  if (!confirmed) {
     console.debug('[PostingsList] User cancelled')
     return
   }
@@ -71,6 +84,7 @@ const handleTogglePostingStatus = async (postingId, currentStatus) => {
   try {
     console.debug('[PostingsList] Updating status', { postingId, newStatus })
     await updatePostingStatus(postingId, newStatus)
+    uiStore.showSuccess(`Posting ${newStatus === 'active' ? 'published' : 'closed'}.`)
     console.log('[PostingsList] Status updated successfully')
   } catch (error) {
     console.error('[PostingsList] Update failed', { postingId, error: error.message })
@@ -82,7 +96,7 @@ const handleTogglePostingStatus = async (postingId, currentStatus) => {
 </script>
 
 <template>
-<div class="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
+<div class="py-8 px-4 sm:px-6 lg:px-8">
     <div class="max-w-7xl mx-auto space-y-6">
         <!-- Header Section -->
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white p-6 rounded-lg shadow-sm border border-gray-100 space-y-4 sm:space-y-0">
@@ -165,8 +179,8 @@ const handleTogglePostingStatus = async (postingId, currentStatus) => {
                                         <div class="text-sm font-medium text-gray-900">{{ posting.title }}</div>
                                         <div class="text-sm text-gray-500 flex items-center space-x-2">
                                             <span>{{ posting.location }}</span>
-                                            <span v-if="posting.salary_range">•</span>
-                                            <span v-if="posting.salary_range" class="text-green-600 font-medium">{{ posting.salary_range }}</span>
+                                            <span v-if="formatSalary(posting.salary_range)">•</span>
+                                            <span v-if="formatSalary(posting.salary_range)" class="text-green-600 font-medium">{{ formatSalary(posting.salary_range) }}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -174,9 +188,9 @@ const handleTogglePostingStatus = async (postingId, currentStatus) => {
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <span 
                                     class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full"
-                                    :class="getStatusColor(posting.status || 'active')"
+                                    :class="getStatusColor(postingStatus(posting))"
                                 >
-                                    {{ (posting.status || 'active').toUpperCase() }}
+                                    {{ postingStatus(posting).toUpperCase() }}
                                 </span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
@@ -191,20 +205,10 @@ const handleTogglePostingStatus = async (postingId, currentStatus) => {
                                 {{ formatDate(posting.created_at) }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex justify-end space-x-3">
-                                <!-- Edit Button: Currently TODO, logs message -->
-                                <button 
-                                    @click="handleEditPosting(posting.id)"
-                                    :disabled="actionLoading === posting.id"
-                                    class="text-indigo-600 hover:text-indigo-900 p-1 rounded hover:bg-indigo-50 transition-colors disabled:opacity-50" 
-                                    title="Edit Posting"
-                                >
-                                    <Edit2 class="w-4 h-4" />
-                                </button>
-                                
                                 <!-- Archive/Close Button: Click to change status to 'closed' -->
                                 <button 
-                                    v-if="posting.status === 'active'"
-                                    @click="handleTogglePostingStatus(posting.id, posting.status)"
+                                    v-if="postingStatus(posting) === 'active'"
+                                    @click="handleTogglePostingStatus(posting.id, postingStatus(posting))"
                                     :disabled="actionLoading === posting.id"
                                     class="text-yellow-600 hover:text-yellow-900 p-1 rounded hover:bg-yellow-50 transition-colors disabled:opacity-50" 
                                     title="Close/Archive"
@@ -214,8 +218,8 @@ const handleTogglePostingStatus = async (postingId, currentStatus) => {
                                 
                                 <!-- Publish Button: Click to change status to 'active' -->
                                 <button 
-                                    v-if="posting.status !== 'active'"
-                                    @click="handleTogglePostingStatus(posting.id, posting.status)"
+                                    v-if="postingStatus(posting) !== 'active'"
+                                    @click="handleTogglePostingStatus(posting.id, postingStatus(posting))"
                                     :disabled="actionLoading === posting.id"
                                     class="text-green-600 hover:text-green-900 p-1 rounded hover:bg-green-50 transition-colors disabled:opacity-50" 
                                     title="Publish"

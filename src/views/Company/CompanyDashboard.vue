@@ -9,6 +9,7 @@ const { fetchProfile, fetchPostings, isLoading } = useCompany()
 const companyStore = useCompanyStore()
 const errorStore = useErrorStore()
 const { profile, postings } = storeToRefs(companyStore)
+const postingStatus = (posting) => posting.status || posting.posting_status || 'active'
 
 /**
  * FIX: HIGH SEVERITY - Sequential API calls now use Promise.all
@@ -61,7 +62,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-100 p-8">
+  <div class="p-4 sm:p-6 lg:p-8">
     <div class="max-w-7xl mx-auto space-y-6">
       <!-- Welcome Header -->
       <div class="bg-white rounded-lg shadow p-6 border-l-4 border-indigo-500">
@@ -113,7 +114,7 @@ onMounted(async () => {
              
              <div class="p-4 bg-gray-50 rounded-lg border border-gray-200">
                 <p class="text-xs text-gray-500 font-semibold uppercase tracking-wide">Active Postings</p>
-                <p class="text-3xl font-black text-indigo-600 mt-1">{{ postings.filter(p => p.posting_status === 'active').length }}</p>
+                <p class="text-3xl font-black text-indigo-600 mt-1">{{ postings.filter(p => postingStatus(p) === 'active').length }}</p>
              </div>
           </div>
         </div>
@@ -131,9 +132,9 @@ onMounted(async () => {
                  <div class="flex-shrink-0 flex items-center">
                     <span 
                       class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
-                      :class="posting.posting_status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'"
+                      :class="postingStatus(posting) === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'"
                     >
-                      {{ posting.posting_status }}
+                      {{ postingStatus(posting) }}
                     </span>
                     <router-link :to="`/company/postings/${posting.id}/applications`" class="ml-4 text-indigo-600 hover:text-indigo-900 text-sm font-medium">Review</router-link>
                  </div>

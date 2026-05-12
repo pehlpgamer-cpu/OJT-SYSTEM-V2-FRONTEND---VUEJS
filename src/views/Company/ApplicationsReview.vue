@@ -4,6 +4,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useCompany } from '../../composables/useCompany'
 import { useCompanyStore } from '../../stores/companyStore'
 import { useErrorStore } from '../../stores/errorStore'
+import { useUiStore } from '../../stores/uiStore'
 import { User, CheckCircle, XCircle, Clock } from 'lucide-vue-next'
 
 const router = useRouter()
@@ -17,6 +18,7 @@ const route = useRoute()
 const { fetchApplications, updateApplicationStatus, isLoading, actionLoading } = useCompany()
 const companyStore = useCompanyStore()
 const errorStore = useErrorStore()
+const uiStore = useUiStore()
 
 /**
  * @type {Ref<string|null>}
@@ -96,9 +98,12 @@ const handleStatusUpdate = async (applicationId, status) => {
         postingId: currentPostingId.value 
     })
     
-    // CONFIRMATION: Ask user to confirm decision
-    // WHY: Prevents accidental rejections of good candidates
-    const confirmed = confirm(`Are you sure you want to ${status} this applicant?`)
+    const confirmed = await uiStore.confirmAction({
+        title: `${status.charAt(0).toUpperCase() + status.slice(1)} applicant`,
+        message: `Are you sure you want to ${status} this applicant?`,
+        confirmLabel: status.charAt(0).toUpperCase() + status.slice(1),
+        tone: status === 'rejected' ? 'danger' : 'default'
+    })
     
     if (!confirmed) {
         console.debug('[ApplicationsReview] User cancelled status update', { applicationId, status })
@@ -120,6 +125,7 @@ const handleStatusUpdate = async (applicationId, status) => {
         await fetchApplications(currentPostingId.value)
         
         // SUCCESS: Show feedback to user
+        uiStore.showSuccess(`Application ${status}.`)
         console.log(`[ApplicationsReview] Application ${status}ed successfully`)
     } catch (error) {
         console.error('[ApplicationsReview] Failed to update status', { 
@@ -180,7 +186,7 @@ const formatDate = (dateString) => {
 </script>
 
 <template>
-<div class="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
+<div class="py-8 px-4 sm:px-6 lg:px-8">
     <div class="max-w-7xl mx-auto space-y-6">
         
         <!-- Page Header -->

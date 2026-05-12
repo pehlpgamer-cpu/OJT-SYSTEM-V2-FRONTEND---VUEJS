@@ -1,49 +1,45 @@
 import { test, expect } from '@playwright/test';
+import { createJwt, mockCurrentUser, mockStudentProfile } from './helpers.js';
 
 test.describe('Student Portal Flow', () => {
   test.beforeEach(async ({ page }) => {
     // Mock the login API response for a Student user
-    await page.route('**/api/v1/auth/login', async route => {
+    await page.route('**/api/auth/login', async route => {
+      const user = { id: 1, role: 'student', email: 'student@example.com' };
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          token: 'fake-student-jwt-token',
-          user: { id: 1, role: 'student', email: 'student@example.com' }
+          token: createJwt('student', { id: 1 }),
+          user
         })
       });
     });
 
-    // Mock student profile fetch
-    await page.route('**/api/v1/student/profile', async route => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          data: {
-            first_name: 'John',
-            last_name: 'Doe',
-            university: 'State University',
-            course: 'Computer Science',
-            skills: ['Vue.js', 'JavaScript', 'Tailwind']
-          }
-        })
-      });
-    });
+    await mockCurrentUser(page, { id: 1, role: 'student', email: 'student@example.com' });
+    await mockStudentProfile(page);
 
     // Mock job matches fetch
-    await page.route('**/api/v1/student/matches', async route => {
+    await page.route('**/api/matches', async route => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
           data: [
             {
+              id: 1,
               posting_id: 101,
-              title: 'Frontend Developer Intern',
-              company_name: 'Tech Corp',
-              match_score: 95,
-              status: 'pending'
+              overall_score: 95,
+              skill_score: 90,
+              location_score: 100,
+              availability_score: 95,
+              OjtPosting: {
+                id: 101,
+                title: 'Frontend Developer Intern',
+                location: 'Remote',
+                duration_weeks: 12,
+                Company: { company_name: 'Tech Corp' }
+              }
             }
           ]
         })
@@ -66,8 +62,8 @@ test.describe('Student Portal Flow', () => {
     await expect(dashboardHeader).toBeVisible();
 
     // Verify mock profile data loaded based on our route mocking
-    await expect(page.locator('text=John Doe')).toBeVisible();
-    await expect(page.locator('text=Computer Science')).toBeVisible();
+    await expect(page.locator('text=Welcome, John!')).toBeVisible();
+    await expect(page.locator('text=Profile Completeness')).toBeVisible();
   });
 
   test('navigates to job matches and views recommended postings', async ({ page }) => {
@@ -75,11 +71,11 @@ test.describe('Student Portal Flow', () => {
     await page.click('text=Job Matches');
     await page.waitForURL('**/student/matches');
 
-    const matchesHeader = page.locator('h1', { hasText: 'Your Job Matches' });
+    const matchesHeader = page.locator('main').getByRole('heading', { name: 'Job Matches' });
     await expect(matchesHeader).toBeVisible();
 
     // Verify mocked job posting card rendered based on match_score
     await expect(page.locator('text=Frontend Developer Intern')).toBeVisible();
-    await expect(page.locator('text=95% Match')).toBeVisible();
+    await expect(page.getByText('95%', { exact: true }).first()).toBeVisible();
   });
 });

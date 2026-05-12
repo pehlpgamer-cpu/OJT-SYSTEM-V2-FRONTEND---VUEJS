@@ -1,12 +1,17 @@
 import { test, expect } from '@playwright/test';
+import {
+  createJwt,
+  mockCompanyPostings,
+  mockCompanyProfile,
+  mockCurrentUser,
+  mockStudentProfile
+} from './helpers.js';
 
 test.describe('Error Handling and Navigation', () => {
   test('displays 404 for invalid routes', async ({ page }) => {
     await page.goto('/nonexistent-route-that-does-not-exist');
     
-    // Should be redirected to login or show error
-    const url = page.url();
-    expect(url).toMatch(/login|404/);
+    await expect(page.locator('text=Page not found')).toBeVisible();
   });
 
   test('redirects unauthenticated users from protected routes', async ({ page }) => {
@@ -19,16 +24,19 @@ test.describe('Error Handling and Navigation', () => {
 
   test('redirects authenticated users away from login page', async ({ page }) => {
     // Mock login
-    await page.route('**/api/**/auth/login', async route => {
+    const user = { id: 1, role: 'student', email: 'test@example.com' };
+    await page.route('**/api/auth/login', async route => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          token: 'test-token',
-          user: { id: 1, role: 'student', email: 'test@example.com' }
+          token: createJwt('student', { id: 1 }),
+          user
         })
       });
     });
+    await mockCurrentUser(page, user);
+    await mockStudentProfile(page);
 
     // Login
     await page.goto('/login');
@@ -42,16 +50,19 @@ test.describe('Error Handling and Navigation', () => {
 
   test('restricts company routes from student users', async ({ page }) => {
     // Mock student login
-    await page.route('**/api/**/auth/login', async route => {
+    const user = { id: 1, role: 'student', email: 'student@example.com' };
+    await page.route('**/api/auth/login', async route => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          token: 'student-token',
-          user: { id: 1, role: 'student', email: 'student@example.com' }
+          token: createJwt('student', { id: 1 }),
+          user
         })
       });
     });
+    await mockCurrentUser(page, user);
+    await mockStudentProfile(page);
 
     // Login as student
     await page.goto('/login');
@@ -63,23 +74,25 @@ test.describe('Error Handling and Navigation', () => {
     // Try to access company dashboard
     await page.goto('/company/dashboard');
 
-    // Should redirect to appropriate dashboard
-    const url = page.url();
-    expect(url).toMatch(/student|login/);
+    await expect(page).toHaveURL(/.*\/unauthorized/);
   });
 
   test('restricts student routes from company users', async ({ page }) => {
     // Mock company login
-    await page.route('**/api/**/auth/login', async route => {
+    const user = { id: 2, role: 'company', email: 'hr@company.com' };
+    await page.route('**/api/auth/login', async route => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          token: 'company-token',
-          user: { id: 2, role: 'company', email: 'hr@company.com' }
+          token: createJwt('company', { id: 2 }),
+          user
         })
       });
     });
+    await mockCurrentUser(page, user);
+    await mockCompanyProfile(page);
+    await mockCompanyPostings(page);
 
     // Login as company
     await page.goto('/login');
@@ -91,14 +104,12 @@ test.describe('Error Handling and Navigation', () => {
     // Try to access student dashboard
     await page.goto('/student/dashboard');
 
-    // Should redirect to appropriate dashboard
-    const url = page.url();
-    expect(url).toMatch(/company|login/);
+    await expect(page).toHaveURL(/.*\/unauthorized/);
   });
 
   test('handles API errors gracefully', async ({ page }) => {
     // Mock failed login
-    await page.route('**/api/**/auth/login', async route => {
+    await page.route('**/api/auth/login', async route => {
       await route.fulfill({
         status: 401,
         contentType: 'application/json',
@@ -124,7 +135,7 @@ test.describe('Error Handling and Navigation', () => {
 
   test('handles network timeout errors', async ({ page }) => {
     // Mock timeout
-    await page.route('**/api/**/auth/login', async route => {
+    await page.route('**/api/auth/login', async route => {
       await route.abort('timedout');
     });
 

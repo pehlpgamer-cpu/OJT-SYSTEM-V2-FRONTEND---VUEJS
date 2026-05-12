@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import { useUiStore } from './uiStore'
 
 /**
  * Global Error Store (Pinia)
@@ -71,6 +72,10 @@ export const useErrorStore = defineStore('error', () => {
     // OVERWRITE: Each setError call replaces previous error
     // UI should call clearError() before new operation or show toast stack
     globalError.value = { message, details, statusCode }
+
+    if (statusCode !== 200) {
+      useUiStore().showError(message)
+    }
   }
 
   /**

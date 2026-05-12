@@ -1,38 +1,24 @@
 import { test, expect } from '@playwright/test';
+import { createJwt, mockCompanyPostings, mockCompanyProfile, mockCurrentUser } from './helpers.js';
 
 test.describe('Company Profile Management', () => {
   test.beforeEach(async ({ page }) => {
     // Mock company login
-    await page.route('**/api/**/auth/login', async route => {
+    const user = { id: 2, role: 'company', email: 'hr@company.com' };
+    await page.route('**/api/auth/login', async route => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          token: 'company-token',
-          user: { id: 2, role: 'company', email: 'hr@company.com' }
+          token: createJwt('company', { id: 2 }),
+          user
         })
       });
     });
 
-    // Mock company profile
-    await page.route('**/api/**/company/profile', async route => {
-      if (route.request().method() === 'GET') {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({
-            data: {
-              company_name: 'Tech Corp',
-              industry: 'Software',
-              headquarters: 'NYC',
-              website: 'https://techcorp.com'
-            }
-          })
-        });
-      } else {
-        await route.fulfill({ status: 200 });
-      }
-    });
+    await mockCurrentUser(page, user);
+    await mockCompanyProfile(page, { industry_type: 'Software' });
+    await mockCompanyPostings(page);
 
     // Login
     await page.goto('/login');
@@ -49,11 +35,11 @@ test.describe('Company Profile Management', () => {
 
   test('shows company profile information', async ({ page }) => {
     await expect(page.locator('text=Tech Corp')).toBeVisible();
-    await expect(page.locator('text=Software')).toBeVisible();
+    await expect(page.locator('text=Total Postings')).toBeVisible();
   });
 
   test('can navigate to create job posting', async ({ page }) => {
-    const createPostingButton = page.locator('text=/create.*posting|new.*posting/i');
+    const createPostingButton = page.getByRole('link', { name: 'New Posting', exact: true });
     
     if (await createPostingButton.count() > 0) {
       await createPostingButton.click();
@@ -63,7 +49,7 @@ test.describe('Company Profile Management', () => {
 
   test('can view list of postings', async ({ page }) => {
     // Mock postings list
-    await page.route('**/api/**/company/postings', async route => {
+    await page.route('**/api/company/postings', async route => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -88,7 +74,7 @@ test.describe('Company Profile Management', () => {
       });
     });
 
-    const postingsLink = page.locator('text=/manage.*postings|postings/i');
+    const postingsLink = page.getByRole('link', { name: 'Postings', exact: true });
     if (await postingsLink.count() > 0) {
       await postingsLink.click();
       

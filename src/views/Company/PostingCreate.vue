@@ -3,10 +3,12 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCompany } from '../../composables/useCompany'
 import { useErrorStore } from '../../stores/errorStore'
+import { useUiStore } from '../../stores/uiStore'
 import { z } from 'zod'
 
 const router = useRouter()
 const errorStore = useErrorStore()
+const uiStore = useUiStore()
 const { createPosting, isLoading } = useCompany()
 
 const formData = ref({
@@ -42,9 +44,8 @@ const submitPosting = async () => {
     const validData = postingSchema.parse(preParse)
     
     await createPosting(validData)
-    // Success: clear errors and redirect to postings list
     errorStore.clearError()
-    // Brief delay to maintain UX
+    uiStore.showSuccess('Job posting created as draft.')
     setTimeout(() => {
       router.push('/company/postings')
     }, 500)
@@ -64,7 +65,7 @@ const submitPosting = async () => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+  <div class="py-8 px-4 sm:px-6 lg:px-8">
     <div class="max-w-4xl mx-auto text-gray-900 bg-white rounded-lg shadow p-8">
       <div class="flex justify-between items-center mb-6">
         <h1 class="text-2xl font-bold text-gray-900">Create New Job Posting</h1>

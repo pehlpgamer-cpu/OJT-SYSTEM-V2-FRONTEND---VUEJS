@@ -8,6 +8,18 @@ import { useMatchStore } from '../../src/stores/matchStore'
 
 describe('useJobMatching Composable', () => {
   beforeEach(() => {
+    const storage = new Map()
+
+    Object.defineProperty(window, 'localStorage', {
+      value: {
+        getItem: vi.fn((key) => storage.get(key) ?? null),
+        setItem: vi.fn((key, value) => storage.set(key, String(value))),
+        removeItem: vi.fn((key) => storage.delete(key)),
+        clear: vi.fn(() => storage.clear())
+      },
+      configurable: true
+    })
+
     setActivePinia(createPinia())
     vi.clearAllMocks()
     global.fetch.mockClear()
@@ -42,5 +54,27 @@ describe('useJobMatching Composable', () => {
     expect(isLoading.value).toBe(true)
     isLoading.value = false
     expect(isLoading.value).toBe(false)
+  })
+
+  it('sends posting_id when applying to a match', async () => {
+    global.fetch.mockResolvedValueOnce({
+      ok: true,
+      status: 201,
+      json: vi.fn().mockResolvedValue({ data: { id: 10 } })
+    })
+
+    const { applyToMatch } = useJobMatching()
+    await applyToMatch(42, { cover_letter: 'This role fits my Vue experience.' })
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      'http://localhost:5000/api/applications',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          posting_id: 42,
+          cover_letter: 'This role fits my Vue experience.'
+        })
+      })
+    )
   })
 })

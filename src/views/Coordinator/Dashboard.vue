@@ -1,5 +1,4 @@
 <script setup>
-import { ref } from 'vue'
 import { useAuthStore } from '../../stores/authStore'
 
 const authStore = useAuthStore()
@@ -9,57 +8,38 @@ const features = [
   {
     title: 'Student Management',
     description: 'Manage and verify student profiles',
-    icon: '👥',
+    icon: 'SM',
     status: 'Coming Soon'
   },
   {
     title: 'Company Verification',
     description: 'Review and approve company registrations',
-    icon: '🏢',
+    icon: 'CV',
     status: 'Coming Soon'
   },
   {
     title: 'Job Postings Review',
     description: 'Monitor and approve job postings',
-    icon: '📋',
+    icon: 'JR',
     status: 'Coming Soon'
   },
   {
     title: 'Matches & Analytics',
     description: 'View system-wide matching statistics',
-    icon: '📊',
+    icon: 'MA',
     status: 'Coming Soon'
   }
 ]
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-50">
-    <!-- Header -->
-    <div class="bg-white shadow-sm border-b border-gray-200">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div class="flex justify-between items-center">
-          <div>
-            <h1 class="text-3xl font-bold text-gray-900">Coordinator Dashboard</h1>
-            <p class="mt-2 text-sm text-gray-600">Welcome, {{ authStore.user?.name || 'Coordinator' }}</p>
-          </div>
-          <div class="text-right">
-            <div class="inline-block bg-yellow-100 rounded-lg px-4 py-2">
-              <p class="text-sm font-semibold text-yellow-800">⚠️ Development Mode</p>
-              <p class="text-xs text-yellow-700">Full features coming soon</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Main Content -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+  <div class="bg-gray-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <!-- Status Alert -->
       <div class="mb-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
-        <h2 class="text-lg font-semibold text-blue-900 mb-2">⚙️ Coordinator Portal Under Development</h2>
+        <h2 class="text-lg font-semibold text-blue-900 mb-2">Coordinator Portal Under Development</h2>
         <p class="text-blue-700 mb-4">
-          The coordinator dashboard is currently being built. Please check back soon for the following features:
+          Welcome, {{ authStore.user?.name || 'Coordinator' }}. Coordinator workflows are not active yet.
         </p>
         <ul class="list-disc list-inside text-blue-700 space-y-1">
           <li>Student profile reviews and verification</li>
@@ -73,7 +53,7 @@ const features = [
       <!-- Feature Grid -->
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div v-for="feature in features" :key="feature.title" class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
-          <div class="text-4xl mb-3">{{ feature.icon }}</div>
+          <div class="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-50 text-sm font-bold text-indigo-700">{{ feature.icon }}</div>
           <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ feature.title }}</h3>
           <p class="text-sm text-gray-600 mb-4">{{ feature.description }}</p>
           <div class="inline-block bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs font-medium">
@@ -87,14 +67,14 @@ const features = [
         <h2 class="text-xl font-bold text-gray-900 mb-6">Quick Reference</h2>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <h3 class="font-semibold text-gray-900 mb-3">📚 Documentation</h3>
+            <h3 class="font-semibold text-gray-900 mb-3">Documentation</h3>
             <p class="text-sm text-gray-600 mb-4">
               Check the backend documentation for API details and implementation guides.
             </p>
-            <a href="/docs" class="text-indigo-600 hover:text-indigo-700 text-sm font-medium">View Documentation →</a>
+            <a href="/docs" class="text-indigo-600 hover:text-indigo-700 text-sm font-medium">View Documentation</a>
           </div>
           <div>
-            <h3 class="font-semibold text-gray-900 mb-3">🔧 Backend Status</h3>
+            <h3 class="font-semibold text-gray-900 mb-3">Backend Status</h3>
             <p class="text-sm text-gray-600 mb-4">
               Coordinator endpoints are being developed. Estimated completion: Backend v2.0
             </p>

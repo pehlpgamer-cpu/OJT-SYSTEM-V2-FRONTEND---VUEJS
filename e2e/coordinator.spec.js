@@ -1,18 +1,21 @@
 import { test, expect } from '@playwright/test';
+import { createJwt, mockCurrentUser } from './helpers.js';
 
 test.describe('Coordinator Portal', () => {
   test.beforeEach(async ({ page }) => {
     // Mock coordinator login
-    await page.route('**/api/**/auth/login', async route => {
+    const user = { id: 3, role: 'coordinator', email: 'coordinator@university.edu', name: 'Coordinator' };
+    await page.route('**/api/auth/login', async route => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          token: 'coordinator-token',
-          user: { id: 3, role: 'coordinator', email: 'coordinator@university.edu' }
+          token: createJwt('coordinator', { id: 3 }),
+          user
         })
       });
     });
+    await mockCurrentUser(page, user);
 
     // Login
     await page.goto('/login');

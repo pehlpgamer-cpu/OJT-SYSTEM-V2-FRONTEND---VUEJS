@@ -1,33 +1,23 @@
 import { test, expect } from '@playwright/test';
+import { createJwt, mockCurrentUser, mockStudentProfile } from './helpers.js';
 
 test.describe('User Session Management', () => {
   test.beforeEach(async ({ page }) => {
     // Mock login for all session tests
-    await page.route('**/api/**/auth/login', async route => {
+    const user = { id: 1, role: 'student', email: 'user@example.com' };
+    await page.route('**/api/auth/login', async route => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          token: 'session-token',
-          user: { id: 1, role: 'student', email: 'user@example.com' }
+          token: createJwt('student', { id: 1 }),
+          user
         })
       });
     });
 
-    // Mock student profile
-    await page.route('**/api/**/student/profile', async route => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          data: {
-            first_name: 'Test',
-            last_name: 'User',
-            university: 'Test University'
-          }
-        })
-      });
-    });
+    await mockCurrentUser(page, user);
+    await mockStudentProfile(page, { first_name: 'Test', last_name: 'User' });
 
     // Login
     await page.goto('/login');
@@ -77,7 +67,7 @@ test.describe('User Session Management', () => {
 
   test('handles 401 unauthorized by logging out', async ({ page }) => {
     // Mock an endpoint that returns 401 (session expired)
-    await page.route('**/api/**/student/matches', async route => {
+    await page.route('**/api/matches', async route => {
       await route.fulfill({
         status: 401,
         contentType: 'application/json',
@@ -88,7 +78,7 @@ test.describe('User Session Management', () => {
     });
 
     // Navigate to matches (triggers 401)
-    const matchesLink = page.locator('text=/matches/i');
+    const matchesLink = page.getByRole('link', { name: 'Job Matches', exact: true }).first();
     if (await matchesLink.count() > 0) {
       await matchesLink.click();
       
@@ -106,16 +96,19 @@ test.describe('User Session Management', () => {
 test.describe('Logout Functionality', () => {
   test('user can logout from dashboard', async ({ page }) => {
     // Mock login
-    await page.route('**/api/**/auth/login', async route => {
+    const user = { id: 1, role: 'student', email: 'logout@example.com' };
+    await page.route('**/api/auth/login', async route => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          token: 'logout-test-token',
-          user: { id: 1, role: 'student', email: 'logout@example.com' }
+          token: createJwt('student', { id: 1 }),
+          user
         })
       });
     });
+    await mockCurrentUser(page, user);
+    await mockStudentProfile(page, { first_name: 'Logout' });
 
     // Login
     await page.goto('/login');
@@ -139,16 +132,19 @@ test.describe('Logout Functionality', () => {
     // Implementation depends on how auth is stored (localStorage, cookies, etc.)
     
     // Login
-    await page.route('**/api/**/auth/login', async route => {
+    const user = { id: 1, role: 'student', email: 'clear@example.com' };
+    await page.route('**/api/auth/login', async route => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          token: 'clear-creds-token',
-          user: { id: 1, role: 'student', email: 'clear@example.com' }
+          token: createJwt('student', { id: 1 }),
+          user
         })
       });
     });
+    await mockCurrentUser(page, user);
+    await mockStudentProfile(page, { first_name: 'Clear' });
 
     await page.goto('/login');
     await page.fill('input[type="email"]', 'clear@example.com');
@@ -166,7 +162,7 @@ test.describe('Logout Functionality', () => {
       await page.goto('/student/dashboard');
       
       // Should be redirected back to login
-      expect(page.url()).toContain('/login');
+      await expect(page).toHaveURL(/.*\/login/);
     }
   });
 });
