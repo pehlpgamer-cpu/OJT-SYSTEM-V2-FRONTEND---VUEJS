@@ -240,6 +240,29 @@ describe('Router Navigation Guards', () => {
         expect(authStore.isAuthenticated).toBe(true)
         expect(authStore.role).toBe('coordinator')
       })
+
+      it('defines all coordinator portal routes', async () => {
+        const { default: router } = await import('../src/router')
+        const routePaths = router.getRoutes().map(route => route.path)
+
+        expect(routePaths).toEqual(expect.arrayContaining([
+          '/coordinator/dashboard',
+          '/coordinator/programs',
+          '/coordinator/programs/new',
+          '/coordinator/programs/:id',
+          '/coordinator/companies',
+          '/coordinator/students',
+          '/coordinator/reports',
+          '/coordinator/audit-logs'
+        ]))
+      })
+
+      it('allows admin override access to coordinator portal routes', async () => {
+        const { default: router } = await import('../src/router')
+        const dashboardRoute = router.getRoutes().find(route => route.path === '/coordinator/dashboard')
+
+        expect(dashboardRoute.meta.roles).toEqual(expect.arrayContaining(['coordinator', 'admin']))
+      })
     })
   })
 

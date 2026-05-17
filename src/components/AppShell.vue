@@ -36,10 +36,21 @@ const navByRole = {
     { label: 'Profile', to: '/company/profile/edit', icon: Building2 }
   ],
   coordinator: [
-    { label: 'Dashboard', to: '/coordinator/dashboard', icon: ShieldCheck }
+    { label: 'Dashboard', to: '/coordinator/dashboard', icon: ShieldCheck },
+    { label: 'Programs', to: '/coordinator/programs', icon: GraduationCap },
+    { label: 'Company Approvals', to: '/coordinator/companies', icon: Building2 },
+    { label: 'Students', to: '/coordinator/students', icon: User },
+    { label: 'Reports', to: '/coordinator/reports', icon: FileText },
+    { label: 'Audit Logs', to: '/coordinator/audit-logs', icon: Search }
   ],
   admin: [
-    { label: 'Dashboard', to: '/admin/dashboard', icon: ShieldCheck }
+    { label: 'Dashboard', to: '/admin/dashboard', icon: ShieldCheck },
+    { label: 'Coordinator Dashboard', to: '/coordinator/dashboard', icon: Home },
+    { label: 'Programs', to: '/coordinator/programs', icon: GraduationCap },
+    { label: 'Company Approvals', to: '/coordinator/companies', icon: Building2 },
+    { label: 'Students', to: '/coordinator/students', icon: User },
+    { label: 'Reports', to: '/coordinator/reports', icon: FileText },
+    { label: 'Audit Logs', to: '/coordinator/audit-logs', icon: Search }
   ]
 }
 

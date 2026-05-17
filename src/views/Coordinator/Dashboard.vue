@@ -1,101 +1,132 @@
 <script setup>
-import { useAuthStore } from '../../stores/authStore'
+import { computed, onMounted } from 'vue'
+import { storeToRefs } from 'pinia'
+import { Building2, ClipboardList, FileText, GraduationCap, Users } from 'lucide-vue-next'
+import { useCoordinator } from '../../composables/useCoordinator'
+import { useCoordinatorStore } from '../../stores/coordinatorStore'
+import { useErrorStore } from '../../stores/errorStore'
 
-const authStore = useAuthStore()
+const { fetchDashboard, isLoading } = useCoordinator()
+const coordinatorStore = useCoordinatorStore()
+const errorStore = useErrorStore()
+const { dashboard } = storeToRefs(coordinatorStore)
 
-// TODO: Replace with actual coordinator features when backend is ready
-const features = [
-  {
-    title: 'Student Management',
-    description: 'Manage and verify student profiles',
-    icon: 'SM',
-    status: 'Coming Soon'
-  },
-  {
-    title: 'Company Verification',
-    description: 'Review and approve company registrations',
-    icon: 'CV',
-    status: 'Coming Soon'
-  },
-  {
-    title: 'Job Postings Review',
-    description: 'Monitor and approve job postings',
-    icon: 'JR',
-    status: 'Coming Soon'
-  },
-  {
-    title: 'Matches & Analytics',
-    description: 'View system-wide matching statistics',
-    icon: 'MA',
-    status: 'Coming Soon'
+onMounted(async () => {
+  errorStore.clearError()
+  try {
+    await fetchDashboard()
+  } catch (error) {
+    console.error('[CoordinatorDashboard] Failed to load dashboard', error)
   }
-]
+})
+
+const metrics = computed(() => dashboard.value?.metrics || {})
+const programs = computed(() => dashboard.value?.programs || [])
+const pendingCompanies = computed(() => dashboard.value?.pending_companies || [])
+const auditLogs = computed(() => dashboard.value?.recent_audit_logs || [])
+
+const statItems = computed(() => [
+  { label: 'Students', value: metrics.value.total_students || 0, icon: Users },
+  { label: 'Approved Companies', value: metrics.value.approved_companies || 0, icon: Building2 },
+  { label: 'Jobs Posted', value: metrics.value.jobs_posted || 0, icon: ClipboardList },
+  { label: 'Applications', value: metrics.value.total_applications || 0, icon: FileText },
+  { label: 'Hired', value: metrics.value.hired_students || 0, icon: GraduationCap },
+  { label: 'Placement Rate', value: `${metrics.value.placement_rate || 0}%`, icon: FileText }
+])
+
+const formatDate = value => value ? new Date(value).toLocaleDateString() : 'N/A'
 </script>
 
 <template>
-  <div class="bg-gray-50">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <!-- Status Alert -->
-      <div class="mb-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
-        <h2 class="text-lg font-semibold text-blue-900 mb-2">Coordinator Portal Under Development</h2>
-        <p class="text-blue-700 mb-4">
-          Welcome, {{ authStore.user?.name || 'Coordinator' }}. Coordinator workflows are not active yet.
-        </p>
-        <ul class="list-disc list-inside text-blue-700 space-y-1">
-          <li>Student profile reviews and verification</li>
-          <li>Company registration approvals</li>
-          <li>Job posting moderation</li>
-          <li>System-wide analytics and reporting</li>
-          <li>Job matching statistics</li>
-        </ul>
+  <div class="p-4 sm:p-6 lg:p-8">
+    <div class="mx-auto max-w-7xl space-y-6">
+      <div class="border-b border-gray-200 pb-5">
+        <p class="text-sm font-medium text-indigo-700">Coordinator Portal</p>
+        <h1 class="mt-2 text-3xl font-bold text-gray-950">Coordinator Dashboard</h1>
+        <p class="mt-2 text-sm text-gray-600">Monitor active OJT programs, company approvals, placements, and audit activity.</p>
       </div>
 
-      <!-- Feature Grid -->
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div v-for="feature in features" :key="feature.title" class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
-          <div class="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-50 text-sm font-bold text-indigo-700">{{ feature.icon }}</div>
-          <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ feature.title }}</h3>
-          <p class="text-sm text-gray-600 mb-4">{{ feature.description }}</p>
-          <div class="inline-block bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs font-medium">
-            {{ feature.status }}
+      <div v-if="errorStore.globalError" class="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        {{ errorStore.globalError.message }}
+      </div>
+
+      <div v-if="isLoading" class="rounded-lg border border-gray-200 bg-white p-8 text-sm text-gray-500">
+        Loading coordinator dashboard...
+      </div>
+
+      <template v-else>
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-6">
+          <div v-for="item in statItems" :key="item.label" class="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+            <div class="flex items-center justify-between">
+              <p class="text-sm text-gray-500">{{ item.label }}</p>
+              <component :is="item.icon" class="h-4 w-4 text-indigo-600" />
+            </div>
+            <p class="mt-3 text-2xl font-semibold text-gray-950">{{ item.value }}</p>
           </div>
         </div>
-      </div>
 
-      <!-- Quick Links -->
-      <div class="mt-12 bg-white rounded-lg shadow-sm border border-gray-200 p-8">
-        <h2 class="text-xl font-bold text-gray-900 mb-6">Quick Reference</h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <h3 class="font-semibold text-gray-900 mb-3">Documentation</h3>
-            <p class="text-sm text-gray-600 mb-4">
-              Check the backend documentation for API details and implementation guides.
-            </p>
-            <a href="/docs" class="text-indigo-600 hover:text-indigo-700 text-sm font-medium">View Documentation</a>
-          </div>
-          <div>
-            <h3 class="font-semibold text-gray-900 mb-3">Backend Status</h3>
-            <p class="text-sm text-gray-600 mb-4">
-              Coordinator endpoints are being developed. Estimated completion: Backend v2.0
-            </p>
-            <button disabled class="text-gray-400 text-sm font-medium cursor-not-allowed">Coming Soon</button>
-          </div>
+        <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+          <section class="rounded-lg border border-gray-200 bg-white shadow-sm xl:col-span-2">
+            <div class="flex items-center justify-between border-b border-gray-200 px-5 py-4">
+              <div>
+                <h2 class="text-base font-semibold text-gray-950">Active Programs</h2>
+                <p class="mt-1 text-sm text-gray-500">Coordinator-owned program cohorts.</p>
+              </div>
+              <RouterLink to="/coordinator/programs/new" class="rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700">
+                New Program
+              </RouterLink>
+            </div>
+
+            <div v-if="programs.length === 0" class="px-5 py-8 text-sm text-gray-500">
+              No active programs yet.
+            </div>
+            <div v-else class="divide-y divide-gray-200">
+              <RouterLink
+                v-for="program in programs"
+                :key="program.id"
+                :to="`/coordinator/programs/${program.id}`"
+                class="grid gap-2 px-5 py-4 hover:bg-gray-50 sm:grid-cols-[1fr_auto]"
+              >
+                <div>
+                  <p class="font-medium text-gray-950">{{ program.name }}</p>
+                  <p class="mt-1 text-sm text-gray-500">{{ formatDate(program.start_date) }} - {{ formatDate(program.end_date) }}</p>
+                </div>
+                <span class="self-start rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-800">{{ program.status }}</span>
+              </RouterLink>
+            </div>
+          </section>
+
+          <section class="rounded-lg border border-gray-200 bg-white shadow-sm">
+            <div class="border-b border-gray-200 px-5 py-4">
+              <h2 class="text-base font-semibold text-gray-950">Pending Companies</h2>
+              <p class="mt-1 text-sm text-gray-500">Waiting for accreditation decision.</p>
+            </div>
+            <div v-if="pendingCompanies.length === 0" class="px-5 py-8 text-sm text-gray-500">No pending companies.</div>
+            <div v-else class="divide-y divide-gray-200">
+              <div v-for="row in pendingCompanies" :key="row.id" class="px-5 py-4">
+                <p class="font-medium text-gray-950">{{ row.company_name || row.User?.name || 'Company' }}</p>
+                <p class="mt-1 text-sm text-gray-500">{{ row.industry_type || 'Industry not set' }}</p>
+              </div>
+            </div>
+            <div class="border-t border-gray-200 px-5 py-3">
+              <RouterLink to="/coordinator/companies" class="text-sm font-medium text-indigo-700 hover:text-indigo-900">Review approvals</RouterLink>
+            </div>
+          </section>
         </div>
-      </div>
 
-      <!-- System Info -->
-      <div class="mt-12 bg-gray-100 rounded-lg p-6 text-center">
-        <p class="text-sm text-gray-600">
-          Backend API: <span class="font-mono text-gray-800">https://ojt-system-v2-backend-nodejs.vercel.app</span>
-        </p>
-        <p class="text-xs text-gray-500 mt-2">
-          For issues or questions, contact the development team.
-        </p>
-      </div>
+        <section class="rounded-lg border border-gray-200 bg-white shadow-sm">
+          <div class="border-b border-gray-200 px-5 py-4">
+            <h2 class="text-base font-semibold text-gray-950">Recent Audit Activity</h2>
+          </div>
+          <div v-if="auditLogs.length === 0" class="px-5 py-8 text-sm text-gray-500">No audit activity yet.</div>
+          <div v-else class="divide-y divide-gray-200">
+            <div v-for="log in auditLogs" :key="log.id" class="grid gap-2 px-5 py-4 text-sm sm:grid-cols-[1fr_auto]">
+              <p class="text-gray-800">{{ log.action }} {{ log.entity_type }} #{{ log.entity_id }}</p>
+              <p class="text-gray-500">{{ formatDate(log.createdAt || log.created_at) }}</p>
+            </div>
+          </div>
+        </section>
+      </template>
     </div>
   </div>
 </template>
-
-<style scoped>
-/* Component styling handled by Tailwind CSS */
-</style>

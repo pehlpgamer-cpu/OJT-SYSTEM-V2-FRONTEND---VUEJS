@@ -126,7 +126,7 @@ const routes = [
   {
     path: '/coordinator',
     component: AppShell,
-    meta: { requiresAuth: true, role: 'coordinator' },
+    meta: { requiresAuth: true, role: 'coordinator', roles: ['coordinator', 'admin'] },
     children: [
       {
         path: '',
@@ -136,7 +136,49 @@ const routes = [
         path: 'dashboard',
         name: 'CoordinatorDashboard',
         component: () => import('../views/Coordinator/Dashboard.vue'),
-        meta: { title: 'Coordinator Dashboard' }
+        meta: { title: 'Coordinator Dashboard', roles: ['coordinator', 'admin'] }
+      },
+      {
+        path: 'programs',
+        name: 'CoordinatorPrograms',
+        component: () => import('../views/Coordinator/ProgramsList.vue'),
+        meta: { title: 'OJT Programs', roles: ['coordinator', 'admin'] }
+      },
+      {
+        path: 'programs/new',
+        name: 'CoordinatorProgramCreate',
+        component: () => import('../views/Coordinator/ProgramCreate.vue'),
+        meta: { title: 'Create Program', roles: ['coordinator', 'admin'] }
+      },
+      {
+        path: 'programs/:id',
+        name: 'CoordinatorProgramDetail',
+        component: () => import('../views/Coordinator/ProgramDetail.vue'),
+        meta: { title: 'Program Details', roles: ['coordinator', 'admin'] }
+      },
+      {
+        path: 'companies',
+        name: 'CoordinatorCompanies',
+        component: () => import('../views/Coordinator/CompanyApprovals.vue'),
+        meta: { title: 'Company Approvals', roles: ['coordinator', 'admin'] }
+      },
+      {
+        path: 'students',
+        name: 'CoordinatorStudents',
+        component: () => import('../views/Coordinator/StudentsPage.vue'),
+        meta: { title: 'Students', roles: ['coordinator', 'admin'] }
+      },
+      {
+        path: 'reports',
+        name: 'CoordinatorReports',
+        component: () => import('../views/Coordinator/ReportsPage.vue'),
+        meta: { title: 'Reports', roles: ['coordinator', 'admin'] }
+      },
+      {
+        path: 'audit-logs',
+        name: 'CoordinatorAuditLogs',
+        component: () => import('../views/Coordinator/AuditLogs.vue'),
+        meta: { title: 'Audit Logs', roles: ['coordinator', 'admin'] }
       }
     ]
   },
@@ -232,6 +274,9 @@ router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
   const errorStore = useErrorStore()
   let isAuthenticated = authStore.isAuthenticated
+  const requiredRoles = Array.isArray(to.meta.roles)
+    ? to.meta.roles
+    : (to.meta.role ? [to.meta.role] : [])
   
   console.debug('[Router] beforeEach guard', { 
     toPath: to.path, 
@@ -239,7 +284,7 @@ router.beforeEach(async (to, from, next) => {
     role: authStore.role,
     requiresAuth: to.meta.requiresAuth,
     requiresGuest: to.meta.requiresGuest,
-    requiredRole: to.meta.role 
+    requiredRoles
   })
 
   // CASE 1: Route requires authentication but user not logged in
@@ -273,9 +318,9 @@ router.beforeEach(async (to, from, next) => {
   
   // CASE 3: Route requires specific role but user has different role
   // RBAC: Role-Based Access Control
-  if (to.meta.role && to.meta.role !== authStore.role) {
+  if (requiredRoles.length > 0 && !requiredRoles.includes(authStore.role)) {
     console.warn('[Router] User role mismatch', { 
-      requiredRole: to.meta.role, 
+      requiredRoles, 
       userRole: authStore.role,
       path: to.path 
     })
