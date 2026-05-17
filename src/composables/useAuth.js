@@ -8,7 +8,8 @@ import { apiClient } from '../utils/apiClient'
 const ROLE_ROUTE_MAP = {
   student: '/student/dashboard',
   company: '/company/dashboard',
-  coordinator: '/coordinator/dashboard'
+  coordinator: '/coordinator/dashboard',
+  admin: '/admin/dashboard'
 }
 
 /**
@@ -75,7 +76,8 @@ export function useAuth() {
    * ROLE-BASED ROUTING:
    * - student -> /student/dashboard
    * - company -> /company/dashboard
-   * - coordinator -> /coordinator/dashboard (added in v2.1)
+   * - coordinator -> /coordinator/dashboard
+   * - admin -> /admin/dashboard
    * 
    * @async
    * @param {string} email - User email address

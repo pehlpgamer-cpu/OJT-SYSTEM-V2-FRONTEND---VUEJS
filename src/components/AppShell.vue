@@ -37,6 +37,9 @@ const navByRole = {
   ],
   coordinator: [
     { label: 'Dashboard', to: '/coordinator/dashboard', icon: ShieldCheck }
+  ],
+  admin: [
+    { label: 'Dashboard', to: '/admin/dashboard', icon: ShieldCheck }
   ]
 }
 
@@ -55,6 +58,7 @@ const roleLabel = computed(() => {
 const pageTitle = computed(() => route.meta.title || navItems.value.find(item => item.to === route.path)?.label || 'OJT Matching')
 
 const dashboardRoute = computed(() => {
+  if (authStore.role === 'admin') return '/admin/dashboard'
   if (authStore.role === 'company') return '/company/dashboard'
   if (authStore.role === 'coordinator') return '/coordinator/dashboard'
   return '/student/dashboard'

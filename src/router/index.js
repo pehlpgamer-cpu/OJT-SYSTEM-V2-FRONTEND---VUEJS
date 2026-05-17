@@ -141,6 +141,23 @@ const routes = [
     ]
   },
   {
+    path: '/admin',
+    component: AppShell,
+    meta: { requiresAuth: true, role: 'admin' },
+    children: [
+      {
+        path: '',
+        redirect: '/admin/dashboard'
+      },
+      {
+        path: 'dashboard',
+        name: 'AdminDashboard',
+        component: () => import('../views/Admin/Dashboard.vue'),
+        meta: { title: 'Admin Dashboard' }
+      }
+    ]
+  },
+  {
     path: '/unauthorized',
     name: 'Unauthorized',
     component: () => import('../views/System/Unauthorized.vue'),
@@ -164,7 +181,8 @@ const router = createRouter({
 const ROLE_ROUTE_MAP = {
   student: '/student/dashboard',
   company: '/company/dashboard',
-  coordinator: '/coordinator/dashboard'
+  coordinator: '/coordinator/dashboard',
+  admin: '/admin/dashboard'
 }
 
 const routeForRole = (role) => ROLE_ROUTE_MAP[role] || null

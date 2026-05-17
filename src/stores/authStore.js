@@ -4,7 +4,7 @@ import { ref } from 'vue'
 const TOKEN_KEY = 'ojt_jwt_token'
 const ROLE_KEY = 'ojt_user_role'
 const USER_KEY = 'ojt_user'
-const ALLOWED_ROLES = ['student', 'company', 'coordinator']
+const ALLOWED_ROLES = ['student', 'company', 'coordinator', 'admin']
 
 const isClient = typeof window !== 'undefined'
 

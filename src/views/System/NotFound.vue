@@ -5,6 +5,7 @@ import { useAuthStore } from '../../stores/authStore'
 const authStore = useAuthStore()
 
 const homeRoute = computed(() => {
+  if (authStore.role === 'admin') return '/admin/dashboard'
   if (authStore.role === 'company') return '/company/dashboard'
   if (authStore.role === 'coordinator') return '/coordinator/dashboard'
   if (authStore.role === 'student') return '/student/dashboard'
