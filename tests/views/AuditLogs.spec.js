@@ -53,6 +53,9 @@ describe('Coordinator AuditLogs view', () => {
     expect(wrapper.text()).toContain('Company accreditation approved')
     expect(wrapper.text()).toContain('Casey Cruz')
     expect(wrapper.text()).toContain('127.0.0.1')
+    expect(wrapper.get('[data-testid="audit-table"]').classes()).toContain('table-fixed')
+    expect(wrapper.get('[data-testid="audit-table"]').classes()).toContain('xl:table-auto')
+    expect(wrapper.find('colgroup').exists()).toBe(false)
 
     await wrapper.get('button[aria-label="Show details for audit event 9"]').trigger('click')
 

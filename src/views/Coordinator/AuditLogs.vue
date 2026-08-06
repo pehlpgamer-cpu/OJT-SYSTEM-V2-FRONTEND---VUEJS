@@ -8,7 +8,8 @@ import {
   ChevronsLeft,
   ChevronsRight,
   FilterX,
-  Search
+  Search,
+  SlidersHorizontal
 } from 'lucide-vue-next'
 import { useCoordinator } from '../../composables/useCoordinator'
 import { useCoordinatorStore } from '../../stores/coordinatorStore'
@@ -20,6 +21,7 @@ const { fetchAuditLogs, isLoading } = useCoordinator()
 const pageSize = ref(25)
 const expandedLogId = ref(null)
 const loadError = ref('')
+const showAdvancedFilters = ref(false)
 const filters = reactive({
   search: '',
   action: '',
@@ -34,6 +36,13 @@ const filters = reactive({
 let filterTimer
 
 const activeFilterCount = computed(() => Object.values(filters).filter(Boolean).length)
+const advancedFilterCount = computed(() => [
+  filters.entityType,
+  filters.severity,
+  filters.userRole,
+  filters.startDate,
+  filters.endDate
+].filter(Boolean).length)
 const hasFilters = computed(() => activeFilterCount.value > 0)
 
 const pageItems = computed(() => {
@@ -116,6 +125,7 @@ function resetFilters() {
     startDate: '',
     endDate: ''
   })
+  showAdvancedFilters.value = false
 }
 
 function toggleDetails(logId) {
@@ -130,12 +140,28 @@ function humanize(value) {
     .replace(/\b\w/g, character => character.toUpperCase())
 }
 
+function toValidDate(value) {
+  const date = value ? new Date(value) : null
+  return date && !Number.isNaN(date.getTime()) ? date : null
+}
+
 function formatDate(value) {
-  if (!value) return 'N/A'
+  const date = toValidDate(value)
+  if (!date) return 'N/A'
   return new Intl.DateTimeFormat(undefined, {
-    dateStyle: 'medium',
-    timeStyle: 'short'
-  }).format(new Date(value))
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  }).format(date)
+}
+
+function formatTime(value) {
+  const date = toValidDate(value)
+  if (!date) return ''
+  return new Intl.DateTimeFormat(undefined, {
+    hour: 'numeric',
+    minute: '2-digit'
+  }).format(date)
 }
 
 function formatJson(value) {
@@ -190,13 +216,13 @@ onBeforeUnmount(() => clearTimeout(filterTimer))
 <template>
   <div class="p-4 sm:p-6 lg:p-8">
     <div class="mx-auto max-w-[1500px]">
-      <header class="border-b border-gray-200 pb-5">
-        <h1 class="text-2xl font-bold text-gray-950">Audit Logs</h1>
-        <p class="mt-1 text-sm text-gray-600">Security and operational activity across OJT workflows.</p>
+      <header class="border-b border-gray-200 pb-4">
+        <h1 class="text-xl font-semibold text-gray-950">Activity history</h1>
+        <p class="mt-1 text-sm text-gray-600">Security and operational events across OJT workflows.</p>
       </header>
 
-      <section aria-label="Audit log filters" class="border-b border-gray-200 py-5">
-        <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+      <section aria-label="Audit log filters" class="border-b border-gray-200 py-4">
+        <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(260px,1fr)_150px_150px_auto_auto] xl:items-end">
           <label class="sm:col-span-2 xl:col-span-1">
             <span class="mb-1.5 block text-xs font-semibold text-gray-700">Search</span>
             <span class="relative block">
@@ -224,6 +250,42 @@ onBeforeUnmount(() => clearTimeout(filterTimer))
           </label>
 
           <label>
+            <span class="mb-1.5 block text-xs font-semibold text-gray-700">Status</span>
+            <select v-model="filters.status" class="h-10 w-full rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-950 focus:border-teal-600 focus:ring-2 focus:ring-teal-100">
+              <option value="">All statuses</option>
+              <option value="success">Success</option>
+              <option value="failed">Failed</option>
+              <option value="pending">Pending</option>
+            </select>
+          </label>
+
+          <button
+            type="button"
+            class="inline-flex h-10 items-center justify-center gap-2 rounded-md border px-3 text-sm font-medium"
+            :class="showAdvancedFilters || advancedFilterCount ? 'border-teal-300 bg-teal-50 text-teal-800' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'"
+            :aria-expanded="showAdvancedFilters"
+            @click="showAdvancedFilters = !showAdvancedFilters"
+          >
+            <SlidersHorizontal class="h-4 w-4" />
+            Filters
+            <span v-if="advancedFilterCount" class="inline-flex h-5 min-w-5 items-center justify-center rounded bg-teal-700 px-1 text-xs text-white">{{ advancedFilterCount }}</span>
+          </button>
+
+          <button
+            type="button"
+            class="inline-flex h-10 w-full items-center justify-center rounded-md border border-gray-300 bg-white text-gray-600 hover:bg-gray-50 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-40 xl:w-10"
+            :disabled="!hasFilters"
+            aria-label="Clear filters"
+            title="Clear filters"
+            @click="resetFilters"
+          >
+            <FilterX class="h-4 w-4" />
+            <span class="ml-2 text-sm font-medium xl:hidden">Clear filters</span>
+          </button>
+        </div>
+
+        <div v-if="showAdvancedFilters" class="mt-3 grid gap-3 border-t border-gray-200 pt-3 sm:grid-cols-2 xl:grid-cols-5">
+          <label>
             <span class="mb-1.5 block text-xs font-semibold text-gray-700">Entity</span>
             <select v-model="filters.entityType" class="h-10 w-full rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-950 focus:border-teal-600 focus:ring-2 focus:ring-teal-100">
               <option value="">All entities</option>
@@ -250,18 +312,6 @@ onBeforeUnmount(() => clearTimeout(filterTimer))
           </label>
 
           <label>
-            <span class="mb-1.5 block text-xs font-semibold text-gray-700">Status</span>
-            <select v-model="filters.status" class="h-10 w-full rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-950 focus:border-teal-600 focus:ring-2 focus:ring-teal-100">
-              <option value="">All statuses</option>
-              <option value="success">Success</option>
-              <option value="failed">Failed</option>
-              <option value="pending">Pending</option>
-            </select>
-          </label>
-        </div>
-
-        <div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-[minmax(150px,1fr)_minmax(160px,1fr)_minmax(160px,1fr)_140px_auto] lg:items-end">
-          <label>
             <span class="mb-1.5 block text-xs font-semibold text-gray-700">Actor role</span>
             <select v-model="filters.userRole" class="h-10 w-full rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-950 focus:border-teal-600 focus:ring-2 focus:ring-teal-100">
               <option value="">All roles</option>
@@ -281,35 +331,15 @@ onBeforeUnmount(() => clearTimeout(filterTimer))
             <span class="mb-1.5 block text-xs font-semibold text-gray-700">To</span>
             <input v-model="filters.endDate" type="date" class="h-10 w-full rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-950 focus:border-teal-600 focus:ring-2 focus:ring-teal-100" />
           </label>
-
-          <label>
-            <span class="mb-1.5 block text-xs font-semibold text-gray-700">Rows per page</span>
-            <select v-model="pageSize" class="h-10 w-full rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-950 focus:border-teal-600 focus:ring-2 focus:ring-teal-100">
-              <option :value="10">10</option>
-              <option :value="25">25</option>
-              <option :value="50">50</option>
-              <option :value="100">100</option>
-            </select>
-          </label>
-
-          <button
-            type="button"
-            class="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-gray-300 bg-white px-3 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
-            :disabled="!hasFilters"
-            @click="resetFilters"
-          >
-            <FilterX class="h-4 w-4" />
-            Clear filters
-          </button>
         </div>
       </section>
 
-      <div v-if="loadError" role="alert" class="mt-5 border-l-4 border-red-500 bg-red-50 px-4 py-3 text-sm text-red-800">
+      <div v-if="loadError" role="alert" class="mt-4 border-l-4 border-red-500 bg-red-50 px-4 py-3 text-sm text-red-800">
         {{ loadError }}
       </div>
 
-      <section class="mt-5 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm" :aria-busy="isLoading">
-        <div class="flex min-h-14 flex-wrap items-center justify-between gap-2 border-b border-gray-200 px-4 py-3 sm:px-5">
+      <section class="mt-4 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm" :aria-busy="isLoading">
+        <div class="flex min-h-14 flex-wrap items-center justify-between gap-3 border-b border-gray-200 px-4 py-3 sm:px-5">
           <div>
             <p class="text-sm font-semibold text-gray-950">
               {{ auditPagination.total.toLocaleString() }} {{ auditPagination.total === 1 ? 'event' : 'events' }}
@@ -317,17 +347,29 @@ onBeforeUnmount(() => clearTimeout(filterTimer))
             <p class="mt-0.5 text-xs text-gray-500">
               <template v-if="auditPagination.total">Showing {{ auditPagination.from }}-{{ auditPagination.to }}</template>
               <template v-else>No matching activity</template>
-              <template v-if="activeFilterCount"> across {{ activeFilterCount }} active {{ activeFilterCount === 1 ? 'filter' : 'filters' }}</template>
+              <template v-if="activeFilterCount"> with {{ activeFilterCount }} active {{ activeFilterCount === 1 ? 'filter' : 'filters' }}</template>
             </p>
           </div>
-          <span v-if="isLoading" class="text-xs font-medium text-teal-700">Refreshing...</span>
+
+          <div class="flex items-center gap-3">
+            <span v-if="isLoading" class="text-xs font-medium text-teal-700">Refreshing...</span>
+            <label class="flex items-center gap-2 text-xs font-medium text-gray-600">
+              Rows
+              <select v-model="pageSize" class="h-9 rounded-md border border-gray-300 bg-white px-2 text-sm text-gray-900 focus:border-teal-600 focus:ring-2 focus:ring-teal-100">
+                <option :value="10">10</option>
+                <option :value="25">25</option>
+                <option :value="50">50</option>
+                <option :value="100">100</option>
+              </select>
+            </label>
+          </div>
         </div>
 
-        <div v-if="isLoading && auditLogs.length === 0" class="space-y-3 p-5" aria-label="Loading audit logs">
+        <div v-if="isLoading && auditLogs.length === 0" class="space-y-2 p-4" aria-label="Loading audit logs">
           <div v-for="index in 6" :key="index" class="h-14 animate-pulse rounded bg-gray-100" />
         </div>
 
-        <div v-else-if="auditLogs.length === 0" class="px-5 py-16 text-center">
+        <div v-else-if="auditLogs.length === 0" class="px-5 py-14 text-center">
           <Search class="mx-auto h-8 w-8 text-gray-300" />
           <p class="mt-3 text-sm font-medium text-gray-800">No audit events found</p>
           <button v-if="hasFilters" type="button" class="mt-2 text-sm font-medium text-teal-700 hover:text-teal-800" @click="resetFilters">
@@ -336,31 +378,21 @@ onBeforeUnmount(() => clearTimeout(filterTimer))
         </div>
 
         <div v-else class="overflow-x-auto">
-          <table class="w-full table-fixed border-collapse">
-            <colgroup>
-              <col class="w-11" />
-              <col />
-              <col class="hidden w-56 md:table-column" />
-              <col class="hidden w-48 lg:table-column" />
-              <col class="w-28 sm:w-40" />
-              <col class="hidden w-40 xl:table-column" />
-              <col class="hidden w-48 sm:table-column" />
-            </colgroup>
+          <table data-testid="audit-table" class="w-full table-fixed border-collapse xl:table-auto">
             <thead class="bg-gray-50">
               <tr>
-                <th scope="col" class="px-2 py-3"><span class="sr-only">Details</span></th>
-                <th scope="col" class="px-3 py-3 text-left text-xs font-semibold uppercase text-gray-500">Event</th>
-                <th scope="col" class="hidden px-3 py-3 text-left text-xs font-semibold uppercase text-gray-500 md:table-cell">Actor</th>
-                <th scope="col" class="hidden px-3 py-3 text-left text-xs font-semibold uppercase text-gray-500 lg:table-cell">Entity</th>
-                <th scope="col" class="px-3 py-3 text-left text-xs font-semibold uppercase text-gray-500">Outcome</th>
-                <th scope="col" class="hidden px-3 py-3 text-left text-xs font-semibold uppercase text-gray-500 xl:table-cell">Source</th>
-                <th scope="col" class="hidden px-3 py-3 text-left text-xs font-semibold uppercase text-gray-500 sm:table-cell">When</th>
+                <th scope="col" class="w-11 px-2 py-3"><span class="sr-only">Details</span></th>
+                <th scope="col" class="px-3 py-3 text-left text-xs font-semibold uppercase text-gray-500">Activity</th>
+                <th scope="col" class="hidden w-48 px-3 py-3 text-left text-xs font-semibold uppercase text-gray-500 xl:table-cell">Actor</th>
+                <th scope="col" class="hidden w-28 px-3 py-3 text-left text-xs font-semibold uppercase text-gray-500 sm:table-cell sm:w-32">Outcome</th>
+                <th scope="col" class="hidden w-36 px-3 py-3 text-left text-xs font-semibold uppercase text-gray-500 2xl:table-cell">Source</th>
+                <th scope="col" class="hidden w-40 px-3 py-3 text-left text-xs font-semibold uppercase text-gray-500 xl:table-cell">When</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-200">
               <template v-for="log in auditLogs" :key="log.id">
-                <tr class="align-top hover:bg-gray-50">
-                  <td class="px-2 py-4 text-center">
+                <tr class="align-middle hover:bg-gray-50">
+                  <td class="px-2 py-3 text-center">
                     <button
                       type="button"
                       class="inline-flex h-8 w-8 items-center justify-center rounded text-gray-500 hover:bg-gray-100 hover:text-gray-900"
@@ -372,43 +404,66 @@ onBeforeUnmount(() => clearTimeout(filterTimer))
                       <ChevronDown class="h-4 w-4 transition-transform" :class="{ 'rotate-180': expandedLogId === log.id }" />
                     </button>
                   </td>
-                  <td class="px-3 py-4">
-                    <div class="flex flex-wrap items-center gap-2">
-                      <span class="rounded bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-800">{{ humanize(log.action) }}</span>
-                      <span class="text-xs text-gray-400">#{{ log.id }}</span>
+
+                  <td class="min-w-0 px-3 py-3">
+                    <div class="flex min-w-0 items-center gap-2">
+                      <span class="shrink-0 rounded bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-800">{{ humanize(log.action) }}</span>
+                      <span class="min-w-0 truncate text-xs text-gray-500" :title="`${humanize(log.entity_type)} #${log.entity_id}`">
+                        {{ humanize(log.entity_type) }} #{{ log.entity_id }}
+                      </span>
+                      <span class="ml-auto flex shrink-0 items-center gap-1 sm:hidden">
+                        <span class="rounded px-1.5 py-1 text-[11px] font-semibold capitalize ring-1 ring-inset" :class="statusClass(log.status)">{{ log.status || 'unknown' }}</span>
+                        <span class="rounded px-1.5 py-1 text-[11px] font-semibold capitalize ring-1 ring-inset" :class="severityClass(log.severity)">{{ log.severity || 'unknown' }}</span>
+                      </span>
                     </div>
-                    <p class="mt-2 break-words text-sm font-medium text-gray-950">{{ log.reason || `${humanize(log.entity_type)} changed` }}</p>
-                    <p class="mt-1 text-xs text-gray-500 md:hidden">{{ actorName(log) }} | {{ actorDetail(log) }}</p>
-                    <p class="mt-1 text-xs text-gray-500 lg:hidden">{{ humanize(log.entity_type) }} #{{ log.entity_id }}</p>
-                    <p class="mt-1 text-xs text-gray-500 sm:hidden">{{ formatDate(log.createdAt || log.created_at) }}</p>
+                    <p class="mt-1 max-w-[60ch] truncate text-sm font-medium text-gray-950" :title="log.reason || `${humanize(log.entity_type)} changed`">
+                      {{ log.reason || `${humanize(log.entity_type)} changed` }}
+                    </p>
+                    <div class="mt-1 flex min-w-0 items-center gap-2 text-xs text-gray-500 xl:hidden">
+                      <span class="min-w-0 truncate" :title="actorDetail(log)">{{ actorName(log) }}</span>
+                      <span class="shrink-0 text-gray-300">/</span>
+                      <time class="shrink-0 whitespace-nowrap" :datetime="log.createdAt || log.created_at">
+                        {{ formatDate(log.createdAt || log.created_at) }} {{ formatTime(log.createdAt || log.created_at) }}
+                      </time>
+                    </div>
                   </td>
-                  <td class="hidden px-3 py-4 md:table-cell">
+
+                  <td class="hidden px-3 py-3 xl:table-cell">
                     <p class="truncate text-sm font-medium text-gray-900" :title="actorName(log)">{{ actorName(log) }}</p>
-                    <p class="mt-1 truncate text-xs text-gray-500" :title="actorDetail(log)">{{ actorDetail(log) }}</p>
+                    <p class="mt-0.5 truncate text-xs text-gray-500" :title="actorDetail(log)">{{ actorDetail(log) }}</p>
                   </td>
-                  <td class="hidden px-3 py-4 lg:table-cell">
-                    <p class="text-sm font-medium text-gray-800">{{ humanize(log.entity_type) }}</p>
-                    <p class="mt-1 text-xs text-gray-500">Record #{{ log.entity_id }}</p>
-                  </td>
-                  <td class="px-3 py-4">
-                    <div class="flex flex-col items-start gap-2">
-                      <span class="rounded px-2 py-1 text-xs font-semibold capitalize ring-1 ring-inset" :class="statusClass(log.status)">{{ log.status || 'unknown' }}</span>
-                      <span class="rounded px-2 py-1 text-xs font-semibold capitalize ring-1 ring-inset" :class="severityClass(log.severity)">{{ log.severity || 'unknown' }}</span>
+
+                  <td class="hidden px-3 py-3 sm:table-cell">
+                    <div class="flex flex-wrap items-center gap-1.5">
+                      <span class="rounded px-1.5 py-1 text-[11px] font-semibold capitalize ring-1 ring-inset" :class="statusClass(log.status)">{{ log.status || 'unknown' }}</span>
+                      <span class="rounded px-1.5 py-1 text-[11px] font-semibold capitalize ring-1 ring-inset" :class="severityClass(log.severity)">{{ log.severity || 'unknown' }}</span>
                     </div>
                   </td>
-                  <td class="hidden px-3 py-4 xl:table-cell">
+
+                  <td class="hidden px-3 py-3 2xl:table-cell">
                     <p class="truncate text-sm text-gray-700" :title="log.ip_address || 'Not recorded'">{{ log.ip_address || 'Not recorded' }}</p>
                   </td>
-                  <td class="hidden px-3 py-4 sm:table-cell">
-                    <time class="text-sm text-gray-700" :datetime="log.createdAt || log.created_at">{{ formatDate(log.createdAt || log.created_at) }}</time>
+
+                  <td class="hidden px-3 py-3 xl:table-cell">
+                    <time :datetime="log.createdAt || log.created_at">
+                      <span class="block whitespace-nowrap text-sm text-gray-700">{{ formatDate(log.createdAt || log.created_at) }}</span>
+                      <span class="mt-0.5 block whitespace-nowrap text-xs text-gray-500">{{ formatTime(log.createdAt || log.created_at) }}</span>
+                    </time>
                   </td>
                 </tr>
+
                 <tr v-if="expandedLogId === log.id" class="bg-gray-50">
-                  <td colspan="7" class="px-4 py-5 sm:px-6">
-                    <div class="grid gap-6 lg:grid-cols-3">
-                      <dl class="grid grid-cols-[110px_1fr] content-start gap-x-3 gap-y-2 text-sm">
+                  <td colspan="6" class="px-4 py-5 sm:px-6">
+                    <div class="grid gap-5 xl:grid-cols-[minmax(190px,0.8fr)_minmax(0,1fr)_minmax(0,1fr)]">
+                      <dl class="grid grid-cols-[90px_minmax(0,1fr)] content-start gap-x-3 gap-y-2 text-sm">
+                        <dt class="text-gray-500">Event ID</dt>
+                        <dd class="font-medium text-gray-900">#{{ log.id }}</dd>
                         <dt class="text-gray-500">Actor ID</dt>
-                        <dd class="break-all font-medium text-gray-900">{{ log.user_id || 'System' }}</dd>
+                        <dd class="font-medium text-gray-900">{{ log.user_id || 'System' }}</dd>
+                        <dt class="text-gray-500">Actor</dt>
+                        <dd class="break-words font-medium text-gray-900">{{ actorName(log) }}</dd>
+                        <dt class="text-gray-500">Contact</dt>
+                        <dd class="break-all font-medium text-gray-900">{{ actorDetail(log) }}</dd>
                         <dt class="text-gray-500">Actor role</dt>
                         <dd class="font-medium text-gray-900">{{ humanize(log.user_role || log.actor?.role || 'system') }}</dd>
                         <dt class="text-gray-500">IP address</dt>
@@ -421,15 +476,15 @@ onBeforeUnmount(() => clearTimeout(filterTimer))
                         </template>
                       </dl>
 
-                      <div>
+                      <div class="min-w-0">
                         <h3 class="text-xs font-semibold uppercase text-gray-500">Previous values</h3>
-                        <pre v-if="log.old_values" class="mt-2 max-h-64 overflow-auto whitespace-pre-wrap break-all rounded border border-gray-200 bg-white p-3 text-xs leading-5 text-gray-700">{{ formatJson(log.old_values) }}</pre>
+                        <pre v-if="log.old_values" class="mt-2 max-h-64 overflow-auto whitespace-pre-wrap rounded border border-gray-200 bg-white p-3 text-xs leading-5 text-gray-700 [overflow-wrap:anywhere]">{{ formatJson(log.old_values) }}</pre>
                         <p v-else class="mt-2 text-sm text-gray-500">No previous values recorded.</p>
                       </div>
 
-                      <div>
+                      <div class="min-w-0">
                         <h3 class="text-xs font-semibold uppercase text-gray-500">New values</h3>
-                        <pre v-if="log.new_values" class="mt-2 max-h-64 overflow-auto whitespace-pre-wrap break-all rounded border border-gray-200 bg-white p-3 text-xs leading-5 text-gray-700">{{ formatJson(log.new_values) }}</pre>
+                        <pre v-if="log.new_values" class="mt-2 max-h-64 overflow-auto whitespace-pre-wrap rounded border border-gray-200 bg-white p-3 text-xs leading-5 text-gray-700 [overflow-wrap:anywhere]">{{ formatJson(log.new_values) }}</pre>
                         <p v-else class="mt-2 text-sm text-gray-500">No new values recorded.</p>
                       </div>
                     </div>
