@@ -181,10 +181,17 @@ export function useCoordinator() {
     return students
   })
 
-  const fetchAuditLogs = (limit = 50) => run(async () => {
-    const payload = await apiClient(`/coordinator/audit-logs?limit=${limit}`, { method: 'GET', retries: 0 })
+  const fetchAuditLogs = (params = {}) => run(async () => {
+    const query = typeof params === 'number' ? { limit: params } : params
+    const search = new URLSearchParams()
+    Object.entries(query || {}).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') search.set(key, value)
+    })
+    const queryString = search.toString()
+    const suffix = queryString ? `?${queryString}` : ''
+    const payload = await apiClient(`/coordinator/audit-logs${suffix}`, { method: 'GET', retries: 0 })
     const logs = unwrapList(payload)
-    store.setAuditLogs(logs)
+    store.setAuditLogs(logs, payload?.pagination)
     return logs
   })
 

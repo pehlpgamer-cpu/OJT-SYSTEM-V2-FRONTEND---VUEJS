@@ -1,6 +1,17 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
+const emptyAuditPagination = () => ({
+  total: 0,
+  page: 1,
+  limit: 25,
+  totalPages: 1,
+  from: 0,
+  to: 0,
+  hasNextPage: false,
+  hasPreviousPage: false
+})
+
 export const useCoordinatorStore = defineStore('coordinator', () => {
   const dashboard = ref(null)
   const programs = ref([])
@@ -12,6 +23,7 @@ export const useCoordinatorStore = defineStore('coordinator', () => {
   const companies = ref([])
   const students = ref([])
   const auditLogs = ref([])
+  const auditPagination = ref(emptyAuditPagination())
   const placementReport = ref(null)
 
   const setDashboard = value => { dashboard.value = value }
@@ -23,7 +35,12 @@ export const useCoordinatorStore = defineStore('coordinator', () => {
   const setProgramPostings = value => { programPostings.value = value || [] }
   const setCompanies = value => { companies.value = value || [] }
   const setStudents = value => { students.value = value || [] }
-  const setAuditLogs = value => { auditLogs.value = value || [] }
+  const setAuditLogs = (value, pagination = null) => {
+    auditLogs.value = value || []
+    auditPagination.value = pagination
+      ? { ...emptyAuditPagination(), ...pagination }
+      : emptyAuditPagination()
+  }
   const setPlacementReport = value => { placementReport.value = value }
 
   return {
@@ -37,6 +54,7 @@ export const useCoordinatorStore = defineStore('coordinator', () => {
     companies,
     students,
     auditLogs,
+    auditPagination,
     placementReport,
     setDashboard,
     setPrograms,

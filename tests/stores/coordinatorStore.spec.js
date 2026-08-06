@@ -19,6 +19,7 @@ describe('Coordinator Store', () => {
     expect(store.companies).toEqual([])
     expect(store.students).toEqual([])
     expect(store.auditLogs).toEqual([])
+    expect(store.auditPagination).toMatchObject({ total: 0, page: 1, limit: 25, totalPages: 1 })
     expect(store.placementReport).toBeNull()
   })
 
@@ -36,7 +37,7 @@ describe('Coordinator Store', () => {
     store.setProgramPostings([{ id: 30 }])
     store.setCompanies([{ id: 40 }])
     store.setStudents([{ id: 50 }])
-    store.setAuditLogs([{ id: 60 }])
+    store.setAuditLogs([{ id: 60 }], { total: 40, page: 2, limit: 25, totalPages: 2 })
     store.setPlacementReport(report)
 
     expect(store.dashboard.activePrograms).toBe(1)
@@ -49,6 +50,7 @@ describe('Coordinator Store', () => {
     expect(store.companies).toHaveLength(1)
     expect(store.students).toHaveLength(1)
     expect(store.auditLogs).toHaveLength(1)
+    expect(store.auditPagination).toMatchObject({ total: 40, page: 2, limit: 25, totalPages: 2 })
     expect(store.placementReport).toEqual(report)
   })
 })

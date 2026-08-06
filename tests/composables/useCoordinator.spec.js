@@ -35,6 +35,7 @@ describe('useCoordinator Composable', () => {
     expect(typeof composable.createProgram).toBe('function')
     expect(typeof composable.updateProgramStudentStatus).toBe('function')
     expect(typeof composable.updateCompanyAccreditation).toBe('function')
+    expect(typeof composable.fetchAuditLogs).toBe('function')
     expect(typeof composable.fetchPlacementReport).toBe('function')
   })
 
@@ -87,5 +88,29 @@ describe('useCoordinator Composable', () => {
     })
     expect(apiClient).toHaveBeenNthCalledWith(2, '/coordinator/companies', { method: 'GET', retries: 0 })
     expect(result.accreditation_status).toBe('approved')
+  })
+
+  it('fetches filtered audit logs and stores server pagination', async () => {
+    apiClient.mockResolvedValueOnce({
+      data: [{ id: 12, action: 'update' }],
+      pagination: { total: 31, page: 2, limit: 10, totalPages: 4 }
+    })
+
+    const { fetchAuditLogs } = useCoordinator()
+    const store = useCoordinatorStore()
+    const logs = await fetchAuditLogs({
+      page: 2,
+      limit: 10,
+      search: 'Casey Cruz',
+      status: 'success',
+      action: ''
+    })
+
+    expect(apiClient).toHaveBeenCalledWith(
+      '/coordinator/audit-logs?page=2&limit=10&search=Casey+Cruz&status=success',
+      { method: 'GET', retries: 0 }
+    )
+    expect(logs).toEqual([{ id: 12, action: 'update' }])
+    expect(store.auditPagination).toMatchObject({ total: 31, page: 2, limit: 10, totalPages: 4 })
   })
 })
