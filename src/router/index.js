@@ -107,6 +107,12 @@ const routes = [
         meta: { title: 'New Posting' }
       },
       {
+        path: 'postings/:id/edit',
+        name: 'PostingEdit',
+        component: () => import('../views/Company/PostingCreate.vue'),
+        meta: { title: 'Edit Posting' }
+      },
+      {
         path: 'postings/:id/applications',
         name: 'ApplicationsReview',
         component: () => import('../views/Company/ApplicationsReview.vue'),

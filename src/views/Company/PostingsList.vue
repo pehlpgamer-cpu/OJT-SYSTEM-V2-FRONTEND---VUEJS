@@ -134,7 +134,7 @@ const handleTogglePostingStatus = async (postingId, currentStatus) => {
         </div>
 
         <!-- Main Content Area -->
-        <div class="bg-white shadow-sm rounded-lg overflow-hidden border border-gray-100 relative min-h-[400px]">
+        <div class="bg-white shadow-sm rounded-lg overflow-hidden border border-gray-100 relative min-h-[25rem]">
             <!-- Loading Overlay -->
             <div v-if="isLoading" class="absolute inset-0 bg-white/70 backdrop-blur-sm flex items-center justify-center z-10">
                  <div class="flex flex-col items-center">
@@ -205,6 +205,14 @@ const handleTogglePostingStatus = async (postingId, currentStatus) => {
                                 {{ formatDate(posting.created_at) }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex justify-end space-x-3">
+                                <router-link
+                                    :to="`/company/postings/${posting.id}/edit`"
+                                    class="text-indigo-600 hover:text-indigo-900 p-1 rounded hover:bg-indigo-50 transition-colors"
+                                    title="Edit posting"
+                                >
+                                    Edit
+                                </router-link>
+
                                 <!-- Archive/Close Button: Click to change status to 'closed' -->
                                 <button 
                                     v-if="postingStatus(posting) === 'active'"

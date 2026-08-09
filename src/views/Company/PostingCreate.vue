@@ -1,15 +1,22 @@
 <script setup>
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted, computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useCompany } from '../../composables/useCompany'
+import { useCompanyStore } from '../../stores/companyStore'
 import { useErrorStore } from '../../stores/errorStore'
 import { useUiStore } from '../../stores/uiStore'
 import { z } from 'zod'
 
+const route = useRoute()
 const router = useRouter()
 const errorStore = useErrorStore()
 const uiStore = useUiStore()
-const { createPosting, isLoading } = useCompany()
+const companyStore = useCompanyStore()
+const { createPosting, updatePosting, fetchPostings, isLoading } = useCompany()
+
+const isEditMode = computed(() => Boolean(route.params.id))
+const pageTitle = computed(() => isEditMode.value ? 'Edit Job Posting' : 'Create New Job Posting')
+const submitLabel = computed(() => isEditMode.value ? 'Save Changes' : 'Create Job Posting')
 
 const formData = ref({
   title: '',
@@ -31,21 +38,60 @@ const postingSchema = z.object({
   positions_available: z.number().int().min(1, 'At least 1 position must be available')
 })
 
+const populateForm = (posting) => {
+  formData.value = {
+    title: posting?.title || '',
+    description: posting?.description || '',
+    location: posting?.location || '',
+    salary_range: posting?.salary_range || posting?.salary_range_min || '',
+    duration_weeks: posting?.duration_weeks ?? null,
+    positions_available: posting?.positions_available ?? 1
+  }
+}
+
+const loadPostingForEdit = async () => {
+  const postingId = route.params.id
+  const existingPosting = companyStore.postings?.find(posting => String(posting.id) === String(postingId))
+
+  if (existingPosting) {
+    populateForm(existingPosting)
+    return
+  }
+
+  try {
+    const postings = await fetchPostings()
+    const matchingPosting = postings.find(posting => String(posting.id) === String(postingId))
+    if (matchingPosting) populateForm(matchingPosting)
+  } catch (error) {
+    console.error('Failed to load posting for editing', error)
+  }
+}
+
+onMounted(() => {
+  if (isEditMode.value) {
+    loadPostingForEdit()
+  }
+})
+
 const submitPosting = async () => {
   validationErrors.value = {}
   errorStore.clearError()
 
   try {
-    // Parse numeric inputs correctly
     const preParse = { ...formData.value }
     if (preParse.duration_weeks) preParse.duration_weeks = Number(preParse.duration_weeks)
     if (preParse.positions_available) preParse.positions_available = Number(preParse.positions_available)
 
     const validData = postingSchema.parse(preParse)
-    
-    await createPosting(validData)
-    errorStore.clearError()
-    uiStore.showSuccess('Job posting created as draft.')
+
+    if (isEditMode.value) {
+      await updatePosting(route.params.id, validData)
+      uiStore.showSuccess('Job posting updated.')
+    } else {
+      await createPosting(validData)
+      uiStore.showSuccess('Job posting created as draft.')
+    }
+
     setTimeout(() => {
       router.push('/company/postings')
     }, 500)
@@ -57,8 +103,7 @@ const submitPosting = async () => {
       })
       validationErrors.value = formattedErrors
     } else {
-      // API error already stored in errorStore by apiClient
-      console.error('Job posting creation failed', err.message)
+      console.error('Job posting submission failed', err.message)
     }
   }
 }
@@ -68,9 +113,9 @@ const submitPosting = async () => {
   <div class="py-8 px-4 sm:px-6 lg:px-8">
     <div class="max-w-4xl mx-auto text-gray-900 bg-white rounded-lg shadow p-8">
       <div class="flex justify-between items-center mb-6">
-        <h1 class="text-2xl font-bold text-gray-900">Create New Job Posting</h1>
-        <router-link to="/company/dashboard" class="text-sm font-medium text-indigo-600 hover:text-indigo-500">
-          Back to Dashboard
+        <h1 class="text-2xl font-bold text-gray-900">{{ pageTitle }}</h1>
+        <router-link to="/company/postings" class="text-sm font-medium text-indigo-600 hover:text-indigo-500">
+          Back to Postings
         </router-link>
       </div>
 
@@ -172,8 +217,8 @@ const submitPosting = async () => {
               :disabled="isLoading"
               class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-indigo-400"
             >
-              <span v-if="isLoading" class="mr-2">Creating...</span>
-              Create Job Posting
+              <span v-if="isLoading" class="mr-2">Saving...</span>
+              {{ submitLabel }}
             </button>
           </div>
         </div>

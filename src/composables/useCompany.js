@@ -275,6 +275,45 @@ export function useCompany() {
   }
 
   /**
+   * Update an existing job posting
+   * 
+   * WHAT: PUT request to /company/postings/{id}
+   * HOW: Sends edited posting fields and preserves draft state when omitted
+   * WHY: Companies can revise draft or existing postings without recreating them
+   */
+  const updatePosting = async (postingId, postingData) => {
+    isLoading.value = true
+    console.debug('[useCompany] updatePosting called', { postingId, fields: Object.keys(postingData || {}) })
+
+    try {
+      const data = await apiClient(`/company/postings/${postingId}`, {
+        method: 'PUT',
+        body: JSON.stringify(postingData)
+      })
+      console.debug('[useCompany] Posting updated', { postingId })
+
+      const updatedPosting = normalizePostingResponse(data)
+      const updatedIndex = store.postings.findIndex(p => p.id === postingId)
+      if (updatedIndex !== -1) {
+        store.postings[updatedIndex] = updatedPosting
+      } else {
+        store.setPostings([updatedPosting, ...(store.postings || [])])
+      }
+
+      return updatedPosting
+    } catch (error) {
+      console.error('[useCompany] updatePosting failed', {
+        error: error.message,
+        postingId,
+        statusCode: error.statusCode
+      })
+      throw error
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  /**
    * Update job posting status
    * 
    * WHAT: PUT request to /company/postings/{id}/status
@@ -475,6 +514,7 @@ export function useCompany() {
     // Job posting operations
     createPosting,
     fetchPostings,
+    updatePosting,
     updatePostingStatus,
     
     // Application operations
