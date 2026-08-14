@@ -206,6 +206,22 @@ const routes = [
     ]
   },
   {
+    path: '/faq',
+    component: AppShell,
+    meta: {
+      requiresAuth: true,
+      roles: ['admin', 'coordinator', 'company', 'student']
+    },
+    children: [
+      {
+        path: '',
+        name: 'Faq',
+        component: () => import('../views/System/FaqPage.vue'),
+        meta: { title: 'Help & FAQ' }
+      }
+    ]
+  },
+  {
     path: '/unauthorized',
     name: 'Unauthorized',
     component: () => import('../views/System/Unauthorized.vue'),

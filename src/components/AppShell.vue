@@ -4,6 +4,7 @@ import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import {
   BriefcaseBusiness,
   Building2,
+  CircleHelp,
   FileText,
   GraduationCap,
   Home,
@@ -54,7 +55,12 @@ const navByRole = {
   ]
 }
 
-const navItems = computed(() => navByRole[authStore.role] || [])
+const faqNavItem = { label: 'Help & FAQ', to: '/faq', icon: CircleHelp }
+
+const navItems = computed(() => {
+  const roleItems = navByRole[authStore.role]
+  return roleItems ? [...roleItems, faqNavItem] : []
+})
 
 const accountName = computed(() => {
   const user = authStore.user || {}
@@ -121,7 +127,7 @@ const handleLogout = async () => {
         </button>
       </div>
 
-      <nav class="flex-1 space-y-1 px-3 py-4">
+      <nav class="flex-1 space-y-1 overflow-y-auto px-3 py-4">
         <RouterLink
           v-for="item in navItems"
           :key="item.to"

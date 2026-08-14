@@ -334,6 +334,16 @@ describe('Router Navigation Guards', () => {
   })
 
   describe('Route Metadata', () => {
+    it('defines one authenticated FAQ route for every supported role', async () => {
+      const { default: router } = await import('../src/router')
+      const resolvedRoute = router.resolve('/faq')
+
+      expect(resolvedRoute.name).toBe('Faq')
+      expect(resolvedRoute.meta.requiresAuth).toBe(true)
+      expect(resolvedRoute.meta.roles).toEqual(['admin', 'coordinator', 'company', 'student'])
+      expect(resolvedRoute.meta.title).toBe('Help & FAQ')
+    })
+
     it('login route has requiresGuest meta', () => {
       // Mock: /login route should have meta.requiresGuest = true
       expect(true).toBe(true)
